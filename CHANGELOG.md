@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 — 2026-09-11
+
+Stop Screen Recording when the lid opens again, and start the next fold instead of leaving capture running with no overlay.
+
 ## 1.2 — 2026-09-11
 
 Duo+ keeps the live desktop and warps it around the hinge. Glass still freezes one frame.

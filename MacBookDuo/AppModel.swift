@@ -300,20 +300,21 @@ final class AppModel {
             presentFold()
         } else if overlay.isVisible {
             hideHold += 1
-            if hideHold > 18 {
-                endFold(keepCapture: prewarming)
+            if hideHold > 8 {
+                endFold(keepCapture: false)
             }
-        } else if capture.frozen, cannedProgress == nil {
-            capture.frozen = false
-            holdingFreeze = false
-            foldSessionActive = false
+        } else if foldSessionActive || capture.frozen {
+            endFold(keepCapture: false)
         }
 
         if !folding, prewarming {
             overlay.keepPresence()
             ensureCaptureStarted()
-        } else if !folding, !prewarming, now >= keepHotUntil, (capture.isRunning || capture.isStarting) {
-            requestCaptureStop(discard: true)
+        } else if !folding, !prewarming, captureStopTask == nil, (capture.isRunning || capture.isStarting) {
+            if capture.isRunning {
+                engine.persistSource()
+            }
+            requestCaptureStop(discard: false)
         }
 
         syncTickRate()
@@ -338,9 +339,7 @@ final class AppModel {
         capture.frozen = false
         holdingFreeze = false
 
-        let reuseLive = foldMode == .duoPlus && capture.isRunning && engine.hasSource
-        let reuseFreeze = foldMode != .duoPlus && engine.hasSource
-        if !reuseLive, !reuseFreeze {
+        if !engine.hasSource {
             captureTask?.cancel()
             captureTask = nil
             if let captureStopTask {
@@ -374,7 +373,6 @@ final class AppModel {
         cannedStart = CACurrentMediaTime()
         cannedProgress = 0
         hideHold = 0
-        keepHotUntil = CACurrentMediaTime() + 2.5
         syncTickRate()
     }
 
@@ -393,8 +391,7 @@ final class AppModel {
         smoothedProgress = Self.progress(for: smoothedAngle, open: openAngle, closed: closedAngle)
         sawOpenPose = smoothedAngle >= openAngle - 1
         peakAngle = max(peakAngle, smoothedAngle)
-        keepHotUntil = now + 2.5
-        endFold(keepCapture: true)
+        endFold(keepCapture: false)
     }
 
     func openStudio() {
@@ -415,14 +412,13 @@ final class AppModel {
     private func presentFold() {
         overlay.keepPresence()
         if !foldSessionActive {
-            foldSessionActive = true
             sessionGeneration = engine.sourceGeneration
             holdingFreeze = false
             capture.frozen = false
         }
         ensureCaptureStarted()
-        guard engine.sourceGeneration > sessionGeneration else { return }
         if foldMode == .duoPlus {
+            guard engine.hasSource else { return }
             capture.frozen = false
             overlay.liveDesktop = true
             overlay.foldMode = .duoPlus
@@ -431,8 +427,18 @@ final class AppModel {
             if !overlay.isVisible {
                 overlay.show()
             }
-        } else if !holdingFreeze {
+            foldSessionActive = true
+            return
+        }
+        if holdingFreeze {
+            foldSessionActive = true
+            return
+        }
+        let fresh = engine.sourceGeneration > sessionGeneration
+        guard fresh || engine.hasSource else { return }
+        if fresh || (!capture.isRunning && !capture.isStarting) {
             commitFreezeAndShow()
+            foldSessionActive = true
         }
     }
 
@@ -442,18 +448,21 @@ final class AppModel {
         capture.frozen = false
         foldSessionActive = false
         hideHold = 0
+        keepHotUntil = 0
         if keepCapture { return }
-        requestCaptureStop(discard: true)
+        engine.persistSource()
+        requestCaptureStop(discard: false)
     }
 
     private func requestCaptureStop(discard: Bool) {
         captureTask?.cancel()
         captureTask = nil
-        captureStopTask = Task { [weak self] in
-            await self?.capture.stop()
-        }
         if discard {
             engine.discardSource()
+        }
+        captureStopTask = Task { [weak self] in
+            await self?.capture.stop()
+            self?.captureStopTask = nil
         }
     }
 
@@ -464,10 +473,8 @@ final class AppModel {
         holdingFreeze = true
         overlay.liveDesktop = false
         overlay.show()
-        if capture.isRunning {
-            captureStopTask = Task { [weak self] in
-                await self?.capture.stop()
-            }
+        if captureStopTask == nil, (capture.isRunning || capture.isStarting) {
+            requestCaptureStop(discard: false)
         }
     }
 
@@ -489,7 +496,7 @@ final class AppModel {
             }
         }
         if angle != lastAngleSample {
-            if angularVelocity <= -2 {
+            if angle < lastAngleSample - 0.15 || angularVelocity <= -1.5 {
                 lastClosingTime = now
             }
             lastAngleSample = angle
@@ -500,9 +507,11 @@ final class AppModel {
     }
 
     private func wantsPrewarm(now: TimeInterval) -> Bool {
-        guard enabled else { return false }
-        let closingRecently = now - lastClosingTime < 2.0
-        return closingRecently && smoothedAngle <= openAngle + 70
+        guard enabled, cannedProgress == nil, !overlay.isVisible else { return false }
+        let closing = angularVelocity <= -1.5 || now - lastClosingTime < 0.35
+        return closing
+            && smoothedAngle <= openAngle + 40
+            && smoothedAngle >= closedAngle
     }
 
     private var needsActiveTick: Bool {
@@ -595,16 +604,13 @@ final class AppModel {
 
     private func wantsFold(now: TimeInterval) -> Bool {
         if cannedProgress != nil { return true }
-        let opening = angularVelocity >= 2
-        if foldSessionActive || overlay.isVisible {
-            if opening, smoothedAngle >= openAngle { return false }
+        let openingPastStart = angularVelocity >= 2 && smoothedAngle >= openAngle
+        if overlay.isVisible {
+            if openingPastStart { return false }
             return smoothedProgress > 0.012
         }
-        let closingRecently = now - lastClosingTime < 1.5
-        return sawOpenPose
-            && closingRecently
-            && !opening
-            && smoothedProgress > 0.012
+        guard sawOpenPose, smoothedProgress > 0.012, !openingPastStart else { return false }
+        return angularVelocity <= -1 || now - lastClosingTime < 0.8
     }
 
     private func handleModeChange() {

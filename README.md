@@ -12,8 +12,19 @@
     around the hinge — driven by the real lid, not a cut between screens.
   </p>
   <p>Opens a System Settings–style window. Close it to leave the Dock; the lid fold keeps running from the menu bar extra.</p>
-  <img width="392" height="816" alt="image" src="https://github.com/user-attachments/assets/6dae323b-7ccd-4a2d-9b4b-6069d701d27b" />
 
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <p><strong>Glass</strong><br/><sub>Freezes one frame, then recedes</sub></p>
+        <img src="docs/glass.gif" width="300" alt="Glass lid-fold on a MacBook">
+      </td>
+      <td align="center" width="50%">
+        <p><strong>Duo+</strong><br/><sub>Live desktop, warped around the hinge</sub></p>
+        <img src="docs/duo-plus.gif" width="300" alt="Duo+ lid-fold on a MacBook">
+      </td>
+    </tr>
+  </table>
 </div>
 
 ## Requirements
@@ -29,6 +40,10 @@
 2. Grant Screen Recording when macOS asks.
 3. Close the lid slowly, or click **Preview**.
 4. Close the window to hide the Dock icon; quit from the menu bar extra so capture stops.
+
+<p align="center">
+  <img width="280" alt="MacBook Duo settings" src="https://github.com/user-attachments/assets/6dae323b-7ccd-4a2d-9b4b-6069d701d27b" />
+</p>
 
 **Look** switches Glass and Duo+. **Depth** (Glass) and the Duo+ sliders
 control how far the pane recedes. Overlay is limited to the built-in

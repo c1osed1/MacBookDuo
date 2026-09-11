@@ -28,8 +28,7 @@
 1. Build and launch. A settings window opens.
 2. Grant Screen Recording when macOS asks.
 3. Close the lid slowly, or click **Preview**.
-4. Quit from the window or Dock so capture actually stops (otherwise the
-   system recording indicator can stick).
+4. Close the window or quit from the Dock so capture stops.
 
 **Look** switches Glass and Duo+. **Depth** (Glass) and the Duo+ sliders
 control how far the pane recedes. Overlay is limited to the built-in

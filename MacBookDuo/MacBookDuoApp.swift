@@ -14,12 +14,13 @@ enum MacBookDuoMain {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     nonisolated(unsafe) static var retained: AppDelegate?
     private static let showWindowNote = Notification.Name("com.foldglass.macbookduo.showWindow")
 
     let model = AppModel()
     private var mainWindow: NSWindow?
+    private var isQuitting = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: "com.foldglass.macbookduo")
@@ -48,10 +49,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
+        true
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        isQuitting = true
         Task {
             await model.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)
@@ -83,8 +85,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.setContentSize(NSSize(width: 900, height: 620))
         window.minSize = NSSize(width: 720, height: 480)
         window.center()
-        window.isReleasedWhenClosed = false
+        window.isReleasedWhenClosed = true
+        window.delegate = self
         window.makeKeyAndOrderFront(nil)
         mainWindow = window
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender === mainWindow, !isQuitting else { return true }
+        NSApp.terminate(nil)
+        return false
     }
 }

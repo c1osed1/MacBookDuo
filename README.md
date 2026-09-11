@@ -1,5 +1,8 @@
 # MacBook Duo
 
+[![Build](https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml/badge.svg)](https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml)
+[![Release](https://github.com/c1osed1/MacBookDuo/releases/latest/badge.svg)](https://github.com/c1osed1/MacBookDuo/releases/latest)
+
 Menu-bar app that plays the **iPhone Duo lid-fold** on a MacBook: when the
 lid closes, the built-in display recedes as a glass pane in 3D — blur, stretch,
 black bezels — driven by the real hinge, not a cut between screens.
@@ -36,6 +39,24 @@ TCC treat every build as a new app — do not switch back to that.
 
 If you clone this repo, set `DEVELOPMENT_TEAM` in the Xcode target to your
 own team, then sign in Xcode once.
+
+## Releases
+
+GitHub Actions builds on every push to `main`. A GitHub Release is published
+only when the **tip commit** message contains `[RELEASE]`.
+
+```bash
+git commit -m "[RELEASE] 1.0.1 Tighten the menu bar popover"
+git push origin main
+```
+
+- `[RELEASE] 1.2.0` (or `v1.2.0`) sets the tag to `v1.2.0`
+- Bare `[RELEASE]` uses `MARKETING_VERSION` from the Xcode project
+- You can also run the **Build** workflow by hand from the Actions tab
+
+CI artifacts are ad-hoc signed. Gatekeeper may block the first launch: right-click
+the app → Open. For daily use, build locally with your Apple Development identity
+so Screen Recording permission survives rebuilds.
 
 ## How it works
 

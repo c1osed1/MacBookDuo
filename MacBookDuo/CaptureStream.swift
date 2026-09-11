@@ -11,7 +11,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     private var running = false
     nonisolated(unsafe) private var textureCache: CVMetalTextureCache?
     private let outputQueue = DispatchQueue(label: "com.foldglass.macbookduo.capture", qos: .userInteractive)
-    nonisolated(unsafe) private let lock = NSLock()
+    private let lock = NSLock()
     nonisolated(unsafe) private var frozenFlag = false
     private var retainedCVTexture: CVMetalTexture?
 

@@ -12,6 +12,8 @@
     around the hinge — driven by the real lid, not a cut between screens.
   </p>
   <p>Lives in the menu bar only. No Dock window.</p>
+  <img width="392" height="816" alt="image" src="https://github.com/user-attachments/assets/6dae323b-7ccd-4a2d-9b4b-6069d701d27b" />
+
 </div>
 
 ## Requirements

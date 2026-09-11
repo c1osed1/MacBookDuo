@@ -54,9 +54,9 @@ git push origin main
 - Bare `[RELEASE]` uses `MARKETING_VERSION` from the Xcode project
 - You can also run the **Build** workflow by hand from the Actions tab
 
-CI artifacts are ad-hoc signed. Gatekeeper may block the first launch: right-click
-the app → Open. For daily use, build locally with your Apple Development identity
-so Screen Recording permission survives rebuilds.
+CI ships a **drag-to-Applications DMG** (ad-hoc signed). Gatekeeper may block
+the first launch: right-click the app → Open. For daily use, build locally with
+your Apple Development identity so Screen Recording permission survives rebuilds.
 
 ## How it works
 

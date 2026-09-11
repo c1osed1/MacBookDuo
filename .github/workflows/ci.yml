@@ -74,18 +74,19 @@ jobs:
             ENABLE_HARDENED_RUNTIME=NO \
             build
 
-      - name: Package app
+      - name: Package DMG
         run: |
           set -euo pipefail
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
           APP="DerivedData/Build/Products/Release/MacBookDuo.app"
           test -d "${APP}"
-          ditto -c -k --keepParent "${APP}" "MacBookDuo.app.zip"
+          ./scripts/make-dmg.sh "${APP}" "MacBookDuo-${{ steps.meta.outputs.version }}.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MacBookDuo.app
-          path: MacBookDuo.app.zip
+          name: MacBookDuo.dmg
+          path: MacBookDuo-*.dmg
           if-no-files-found: error
 
   release:
@@ -93,10 +94,10 @@ jobs:
     if: needs.build.outputs.should_release == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Download app
+      - name: Download DMG
         uses: actions/download-artifact@v4
         with:
-          name: MacBookDuo.app
+          name: MacBookDuo.dmg
 
       - name: Publish GitHub Release
         env:
@@ -122,4 +123,4 @@ jobs:
             --target "${TAG_SHA}" \
             --title "MacBook Duo ${VERSION}" \
             --notes "${NOTES}" \
-            "MacBookDuo.app.zip#MacBookDuo-${VERSION}.app.zip"
+            "MacBookDuo-${VERSION}.dmg"

@@ -4,7 +4,7 @@ import CoreGraphics
 @MainActor
 final class OverlayController {
     private let engine: DuoEngine
-    private var window: NSWindow?
+    private var window: OverlayPanel?
     private var metalView: DuoMetalView?
     private var boundDisplayID: CGDirectDisplayID?
     private var windowIsLive = false
@@ -49,23 +49,13 @@ final class OverlayController {
             metalView.plusLook = plusLook
             metalView.liveDesktop = liveDesktop
             metalView.applyChrome()
-            let overlay = NSWindow(
+            let overlay = OverlayPanel(
                 contentRect: screen.frame,
-                styleMask: .borderless,
+                styleMask: [.borderless, .nonactivatingPanel],
                 backing: .buffered,
-                defer: false,
-                screen: screen
+                defer: false
             )
             overlay.contentView = metalView
-            overlay.isOpaque = !liveDesktop
-            overlay.backgroundColor = liveDesktop ? .clear : .black
-            overlay.hasShadow = false
-            overlay.ignoresMouseEvents = true
-            overlay.level = .screenSaver
-            overlay.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle, .stationary]
-            overlay.animationBehavior = .none
-            overlay.isReleasedWhenClosed = false
-            overlay.sharingType = .none
             self.metalView = metalView
             self.window = overlay
             boundDisplayID = displayID
@@ -73,14 +63,11 @@ final class OverlayController {
         }
 
         guard let window else { return }
+        applyOverlayChrome(window, live: liveDesktop)
         metalView?.foldMode = foldMode
         metalView?.openAngle = openAngle
         metalView?.plusLook = plusLook
         metalView?.liveDesktop = liveDesktop
-        if isVisible, window.screen == screen, window.frame == screen.frame {
-            metalView?.isPaused = false
-            return
-        }
         if window.screen != screen || window.frame != screen.frame {
             window.setFrame(screen.frame, display: false)
         }
@@ -134,4 +121,31 @@ final class OverlayController {
         window.orderFrontRegardless()
         presenceWindow = window
     }
+
+    private func applyOverlayChrome(_ overlay: OverlayPanel, live: Bool) {
+        overlay.isOpaque = !live
+        overlay.backgroundColor = live ? .clear : .black
+        overlay.hasShadow = false
+        overlay.ignoresMouseEvents = true
+        overlay.hidesOnDeactivate = false
+        overlay.becomesKeyOnlyIfNeeded = true
+        overlay.isFloatingPanel = true
+        overlay.worksWhenModal = true
+        overlay.level = .screenSaver
+        overlay.collectionBehavior = [
+            .canJoinAllSpaces,
+            .canJoinAllApplications,
+            .fullScreenAuxiliary,
+            .ignoresCycle,
+            .stationary
+        ]
+        overlay.animationBehavior = .none
+        overlay.isReleasedWhenClosed = false
+        overlay.sharingType = .none
+    }
+}
+
+private final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }

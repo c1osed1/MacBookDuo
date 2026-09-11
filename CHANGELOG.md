@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 — 2026-09-11
+
+Draw the fold over native full-screen apps (Safari, YouTube) without pulling them out of that Space.
+
 ## 1.3 — 2026-09-11
 
 Leave the menu bar. Launch opens a System Settings–style window in the Dock; the lid fold still runs while the app is open.

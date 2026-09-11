@@ -21,6 +21,7 @@ struct KawaseUniforms {
 enum FoldMode: String, CaseIterable, Identifiable {
     case glass
     case duoPlus
+    case frost
 
     var id: String { rawValue }
 
@@ -28,6 +29,22 @@ enum FoldMode: String, CaseIterable, Identifiable {
         switch self {
         case .glass: "Glass"
         case .duoPlus: "Duo+"
+        case .frost: "Frost"
+        }
+    }
+
+    var usesLiveCapture: Bool {
+        self != .glass
+    }
+
+    var caption: String {
+        switch self {
+        case .glass:
+            "Freeze one frame, then recede."
+        case .duoPlus:
+            "Live desktop, warped around the hinge."
+        case .frost:
+            "Picture stays in the room. The lid milks through it."
         }
     }
 }

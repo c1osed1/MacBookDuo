@@ -70,24 +70,39 @@ final class LidSensor {
             return
         }
 
-        let dt = now - lastTime
-        guard dt > 0 else { return }
-
-        if dt < 0.08, abs(raw - angle) > 28 {
+        let changed = abs(raw - lastAngle) >= 0.5
+        if changed {
+            let dt = now - lastTime
+            if dt > 0, dt < 0.02, abs(raw - lastAngle) > 35 {
+                return
+            }
+            if dt > 0.018, dt < 0.5 {
+                velocity = velocity * 0.38 + ((raw - lastAngle) / dt) * 0.62
+            } else if dt > 0, dt < 1 {
+                velocity = (raw - lastAngle) / dt
+            }
+            lastAngle = raw
             lastTime = now
-            return
-        }
-
-        if dt < 1 {
-            let delta = raw - lastAngle
-            let instant = abs(delta) < 0.08 ? 0.0 : delta / dt
-            velocity = velocity * 0.62 + instant * 0.38
         }
 
         angle = raw
-        lastAngle = raw
-        lastTime = now
         status = Self.label(for: raw)
+    }
+
+    func coastVelocity(at now: TimeInterval) -> Double {
+        let age = now - lastTime
+        if abs(velocity) < 0.35 { return 0 }
+        if age <= 0.2 { return velocity }
+        let decayed = velocity * exp(-(age - 0.2) * 12)
+        return abs(decayed) < 0.4 ? 0 : decayed
+    }
+
+    /// Where the lid is now, filling the gaps between sparse HID samples.
+    func predictedAngle(at now: TimeInterval) -> Double {
+        let v = coastVelocity(at: now)
+        guard abs(v) > 0.35 else { return angle }
+        let predicted = angle + v * min(max(now - lastTime, 0), 0.16)
+        return min(max(predicted, 0), 180)
     }
 
     private static func label(for angle: Double) -> String {

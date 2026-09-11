@@ -91,4 +91,36 @@ enum DuoPlusGeometry {
             light: SIMD4(0.2, Float(dimStrength), maxLevel, Float(paddingInPoints))
         )
     }
+
+    /// World-locked sheet: the picture stays put while the lid sweeps through it.
+    static func frostLook(from look: PlusLook) -> PlusLook {
+        PlusLook(
+            viewingDistance: min(max(look.viewingDistance, 3.2), 5.4),
+            recession: 1,
+            maxBlurRadius: look.maxBlurRadius,
+            blurEvenness: max(look.blurEvenness, 0.08),
+            maxDim: look.maxDim,
+            dimReach: max(look.dimReach, 0.45)
+        )
+    }
+
+    static func frostUniforms(
+        startAngle: Double,
+        currentAngle: Double,
+        progress: Double,
+        look: PlusLook,
+        screenSize: CGSize,
+        pixelScale: Double
+    ) -> PlusUniforms {
+        var uniforms = plusUniforms(
+            startAngle: startAngle,
+            currentAngle: currentAngle,
+            progress: progress,
+            look: frostLook(from: look),
+            screenSize: screenSize,
+            pixelScale: pixelScale
+        )
+        uniforms.light.w = Float(28 * pixelScale)
+        return uniforms
+    }
 }

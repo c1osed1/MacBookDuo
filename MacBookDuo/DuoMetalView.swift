@@ -19,7 +19,7 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
         colorPixelFormat = .bgra8Unorm
         isPaused = true
         enableSetNeedsDisplay = false
-        preferredFramesPerSecond = 60
+        preferredFramesPerSecond = 120
         autoResizeDrawable = true
         clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         applyChrome()
@@ -35,7 +35,7 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
     func applyChrome() {
         layer?.isOpaque = !liveDesktop
         (layer as? CAMetalLayer)?.isOpaque = !liveDesktop
-        preferredFramesPerSecond = liveDesktop ? 30 : 60
+        preferredFramesPerSecond = 120
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -55,7 +55,7 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
         uniforms.resolution = SIMD2<Float>(Float(drawableSize.width), Float(drawableSize.height))
         self.uniforms = uniforms
 
-        if foldMode == .duoPlus {
+        if foldMode.usesLiveCapture {
             let pointSize = bounds.size
             let scale = Double(drawableSize.width) / max(Double(pointSize.width), 1)
             engine.preparePlus(from: source, commandBuffer: commandBuffer, drawableSize: drawableSize)
@@ -64,15 +64,24 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
                 commandBuffer.commit()
                 return
             }
-            var plusUniforms = DuoPlusGeometry.plusUniforms(
-                startAngle: openAngle,
-                currentAngle: Double(uniforms.angle),
-                progress: Double(uniforms.progress),
-                look: plusLook,
-                screenSize: pointSize,
-                pixelScale: scale
-            )
-            encoder.setRenderPipelineState(engine.plusPipeline)
+            var plusUniforms = foldMode == .frost
+                ? DuoPlusGeometry.frostUniforms(
+                    startAngle: openAngle,
+                    currentAngle: Double(uniforms.angle),
+                    progress: Double(uniforms.progress),
+                    look: plusLook,
+                    screenSize: pointSize,
+                    pixelScale: scale
+                )
+                : DuoPlusGeometry.plusUniforms(
+                    startAngle: openAngle,
+                    currentAngle: Double(uniforms.angle),
+                    progress: Double(uniforms.progress),
+                    look: plusLook,
+                    screenSize: pointSize,
+                    pixelScale: scale
+                )
+            encoder.setRenderPipelineState(foldMode == .frost ? engine.frostPipeline : engine.plusPipeline)
             encoder.setFragmentBytes(&plusUniforms, length: MemoryLayout<PlusUniforms>.stride, index: 0)
             encoder.setFragmentTexture(plus, index: 0)
             encoder.setFragmentSamplerState(engine.mipSampler, index: 0)

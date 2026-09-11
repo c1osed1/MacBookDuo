@@ -113,7 +113,7 @@ private struct GeneralPane: View {
             Section {
                 SettingsHeader(
                     title: "MacBook Duo",
-                    subtitle: "When the lid closes, the built-in display recedes in 3D. Glass freezes one frame. Duo+ keeps the live desktop.",
+                    subtitle: "Close the lid. The screen recedes in 3D — Glass, Duo+, or Frost, driven by the real hinge.",
                     appIcon: NSApp.applicationIconImage
                 )
             }
@@ -225,13 +225,11 @@ private struct LookPane: View {
                         Text(mode.title).tag(mode)
                     }
                 }
-                .pickerStyle(.segmented)
-                Text(
-                    model.foldMode == .glass
-                        ? "Glass freezes one frame, then stops capture."
-                        : "Duo+ keeps the live desktop and warps it around the hinge."
-                )
-                .foregroundStyle(.secondary)
+                .pickerStyle(.radioGroup)
+                Text(model.foldMode.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Look")
             }
 
             if model.foldMode == .glass {
@@ -280,6 +278,30 @@ private struct LookPane: View {
                         .foregroundStyle(.secondary)
                 } header: {
                     Text("Duo+")
+                }
+            }
+
+            if model.foldMode == .frost {
+                Section {
+                    Slider(value: $model.maxBlurRadius, in: 10...160) {
+                        Text("Blur")
+                    } minimumValueLabel: {
+                        Text("10")
+                    } maximumValueLabel: {
+                        Text("160")
+                    }
+                    Text("How milky the far edge gets as the lid closes.")
+                        .foregroundStyle(.secondary)
+                    Slider(value: $model.blurEvenness, in: 0...1) {
+                        Text("Frost spread")
+                    }
+                    Text("0 frosts the far edge only, 100 the whole picture.")
+                        .foregroundStyle(.secondary)
+                    Slider(value: $model.maxDim, in: 0...1) {
+                        Text("Dimming")
+                    }
+                } header: {
+                    Text("Frost")
                 }
             }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+## 1.4.0 — 2026-09-11
+
+Frost pins the live desktop in the room and milks the far edge as the lid closes. Glass still freezes; Duo+ still leans as a hinged sheet.
+
+The pane follows the hinge at display refresh. Sparse lid-sensor samples are coasted and critically damped so a real close feels like Preview instead of a 10 Hz staircase.
+
 ## 1.3.3 — 2026-09-11
 
 Close the settings window to leave the Dock. The lid fold keeps running from a menu bar extra; quit from there to stop capture.

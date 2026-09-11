@@ -79,13 +79,14 @@ final class AppModel {
     private var started = false
     private var smoothedAngle = 110.0
     private var smoothedProgress = 0.0
+    private var hingeVelocity = 0.0
     private var cannedProgress: Double?
     private var cannedStart: TimeInterval = 0
     private var lastTime = CACurrentMediaTime()
     private var lastIdlePoll = 0.0
     private var displayLink: CADisplayLink?
     private let tickProxy = TickProxy()
-    private var hideHold = 0
+    private var overlayHideCandidateSince: TimeInterval = 0
     private var highRate = false
     private var holdingFreeze = false
     private var foldSessionActive = false
@@ -141,19 +142,20 @@ final class AppModel {
         started = true
         sensor.start()
         overlay.foldMode = foldMode
-        overlay.liveDesktop = foldMode == .duoPlus
+        overlay.liveDesktop = foldMode.usesLiveCapture
         overlay.openAngle = openAngle
         overlay.keepPresence()
         let initial = sensor.isAvailable ? sensor.angle : 110
         demoAngle = initial
         smoothedAngle = initial
+        hingeVelocity = 0
         peakAngle = initial
         sawOpenPose = initial >= openAngle - 1
         lastTime = CACurrentMediaTime()
 
-        tickProxy.onTick = { [weak self] in
+        tickProxy.onTick = { [weak self] dt in
             MainActor.assumeIsolated {
-                self?.tick()
+                self?.tick(frameDt: dt)
             }
         }
         installDisplayLink()
@@ -199,7 +201,7 @@ final class AppModel {
         overlay.reassert()
     }
 
-    func tick() {
+    func tick(frameDt: TimeInterval) {
         let now = CACurrentMediaTime()
         let active = needsActiveTick
         if !active, now - lastIdlePoll < 0.09 {
@@ -207,7 +209,7 @@ final class AppModel {
         }
         lastIdlePoll = now
 
-        let dt = min(max(now - lastTime, 1.0 / 240.0), 1.0 / 20.0)
+        let dt = min(max(frameDt > 1e-4 ? frameDt : now - lastTime, 1.0 / 240.0), 1.0 / 20.0)
         lastTime = now
 
         if sensor.isAvailable {
@@ -217,37 +219,34 @@ final class AppModel {
             }
         }
 
-        let rawAngle: Double
-        if cannedProgress != nil {
-            rawAngle = mappedAngle(for: cannedCurveNow())
-        } else if driveDisplayFromDemo || !sensor.isAvailable {
-            rawAngle = demoAngle
-        } else {
-            rawAngle = sensor.angle
-        }
-
-        let speed = abs(rawAngle - smoothedAngle)
-        let cutoff = 10.0 + min(speed, 18.0) * 1.6
-        let angleFollow = 1 - exp(-dt * cutoff)
-        smoothedAngle += (rawAngle - smoothedAngle) * angleFollow
-
-        let target: Double
         if cannedProgress != nil {
             let elapsed = now - cannedStart
             if elapsed >= 2.6 {
                 finishCannedDemo(now: now)
-                target = Self.progress(for: smoothedAngle, open: openAngle, closed: closedAngle)
             } else {
-                target = Self.cannedCurve(elapsed)
+                smoothedProgress = Self.cannedCurve(elapsed)
+                smoothedAngle = mappedAngle(for: smoothedProgress)
+                hingeVelocity = 0
             }
         } else {
-            target = Self.progress(for: smoothedAngle, open: openAngle, closed: closedAngle)
-        }
-
-        let progressFollow = 1 - exp(-dt * 26)
-        smoothedProgress += (target - smoothedProgress) * progressFollow
-        if abs(target - smoothedProgress) < 0.0005 {
-            smoothedProgress = target
+            let targetAngle: Double
+            if driveDisplayFromDemo || !sensor.isAvailable {
+                targetAngle = demoAngle
+            } else {
+                targetAngle = sensor.predictedAngle(at: now)
+            }
+            let hidSpeed = abs(sensor.coastVelocity(at: now))
+            // Slow closes need a longer window so 1° HID steps become a curve.
+            // Fast slams shorten it so the pane still keeps up with the lid.
+            let smoothTime = 0.1 - min(hidSpeed, 80) / 80 * 0.062
+            smoothedAngle = Self.smoothDamp(
+                current: smoothedAngle,
+                target: targetAngle,
+                velocity: &hingeVelocity,
+                smoothTime: smoothTime,
+                dt: dt
+            )
+            smoothedProgress = Self.progress(for: smoothedAngle, open: openAngle, closed: closedAngle)
         }
 
         var uniforms = DuoUniforms.identity
@@ -256,11 +255,11 @@ final class AppModel {
         uniforms.intensity = Float(intensity)
         overlay.foldMode = foldMode
         overlay.openAngle = openAngle
-        overlay.liveDesktop = foldMode == .duoPlus
+        overlay.liveDesktop = foldMode.usesLiveCapture
         overlay.plusLook = plusLook
         overlay.uniforms = uniforms
 
-        let motionAngle = sensor.isAvailable ? sensor.angle : rawAngle
+        let motionAngle = sensor.isAvailable ? sensor.angle : smoothedAngle
         trackLidMotion(motionAngle, now: now)
         peakAngle = max(peakAngle, smoothedAngle)
         if smoothedAngle >= openAngle - 1 {
@@ -268,7 +267,7 @@ final class AppModel {
         }
 
         guard enabled else {
-            hideHold = 0
+            overlayHideCandidateSince = 0
             holdingFreeze = false
             foldSessionActive = false
             captureEpoch = nil
@@ -293,11 +292,13 @@ final class AppModel {
         let folding = wantsFold(now: now)
         let prewarming = wantsPrewarm(now: now)
         if folding {
-            hideHold = 0
+            overlayHideCandidateSince = 0
             presentFold()
         } else if overlay.isVisible {
-            hideHold += 1
-            if hideHold > 8 {
+            if overlayHideCandidateSince == 0 {
+                overlayHideCandidateSince = now
+            }
+            if now - overlayHideCandidateSince > 0.12 {
                 endFold(keepCapture: false)
             }
         } else if foldSessionActive || capture.frozen || captureEpoch != nil {
@@ -321,7 +322,7 @@ final class AppModel {
         if cannedProgress != nil, engine.hasSource {
             cannedStart = CACurrentMediaTime()
             cannedProgress = 0
-            hideHold = 0
+            overlayHideCandidateSince = 0
             syncTickRate()
             return
         }
@@ -344,7 +345,7 @@ final class AppModel {
             }
             guard !Task.isCancelled else { return }
             let baseline = engine.sourceGeneration
-            await capture.start(live: foldMode == .duoPlus)
+            await capture.start(live: foldMode.usesLiveCapture)
             for _ in 0..<50 {
                 if Task.isCancelled { return }
                 if engine.sourceGeneration > baseline { break }
@@ -358,9 +359,9 @@ final class AppModel {
 
         guard !Task.isCancelled, engine.hasSource else { return }
         foldSessionActive = true
-        if foldMode == .duoPlus {
+        if foldMode.usesLiveCapture {
             overlay.liveDesktop = true
-            overlay.foldMode = .duoPlus
+            overlay.foldMode = foldMode
             overlay.openAngle = openAngle
             overlay.plusLook = plusLook
             overlay.show()
@@ -369,7 +370,7 @@ final class AppModel {
         }
         cannedStart = CACurrentMediaTime()
         cannedProgress = 0
-        hideHold = 0
+        overlayHideCandidateSince = 0
         syncTickRate()
     }
 
@@ -379,6 +380,7 @@ final class AppModel {
             sensor.poll()
             let real = sensor.angle
             smoothedAngle = real
+            hingeVelocity = 0
             demoAngle = real
             lastAngleSample = real
             lastAngleSampleTime = now
@@ -410,11 +412,11 @@ final class AppModel {
             capture.frozen = false
         }
         ensureCaptureStarted()
-        if foldMode == .duoPlus {
+        if foldMode.usesLiveCapture {
             guard engine.hasSource else { return }
             capture.frozen = false
             overlay.liveDesktop = true
-            overlay.foldMode = .duoPlus
+            overlay.foldMode = foldMode
             overlay.openAngle = openAngle
             overlay.plusLook = plusLook
             if !overlay.isVisible {
@@ -446,7 +448,7 @@ final class AppModel {
         capture.frozen = false
         foldSessionActive = false
         captureEpoch = nil
-        hideHold = 0
+        overlayHideCandidateSince = 0
         keepHotUntil = 0
         if keepCapture { return }
         _ = engine.persistSource()
@@ -483,7 +485,7 @@ final class AppModel {
             return
         }
         captureTask = Task { [weak self] in
-            await self?.capture.start(live: self?.foldMode == .duoPlus)
+            await self?.capture.start(live: self?.foldMode.usesLiveCapture == true)
             self?.captureTask = nil
         }
     }
@@ -522,6 +524,7 @@ final class AppModel {
             || holdingFreeze
             || angularVelocity <= -2
             || CACurrentMediaTime() < keepHotUntil
+            || CACurrentMediaTime() - lastClosingTime < 0.5
     }
 
     private func syncTickRate() {
@@ -529,8 +532,8 @@ final class AppModel {
         guard active != highRate else { return }
         highRate = active
         displayLink?.preferredFrameRateRange = active
-            ? CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
-            : CAFrameRateRange(minimum: 8, maximum: 12, preferred: 10)
+            ? CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+            : CAFrameRateRange(minimum: 15, maximum: 30, preferred: 20)
     }
 
     private func installDisplayLink() {
@@ -539,7 +542,7 @@ final class AppModel {
         highRate = false
         let screen = ScreenSnapper.builtinScreen() ?? NSScreen.screens.first
         let link = screen?.displayLink(target: tickProxy, selector: #selector(TickProxy.step(_:)))
-        link?.preferredFrameRateRange = CAFrameRateRange(minimum: 8, maximum: 12, preferred: 10)
+        link?.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 20)
         link?.add(to: .main, forMode: .common)
         displayLink = link
     }
@@ -616,7 +619,7 @@ final class AppModel {
 
     private func handleModeChange() {
         overlay.foldMode = foldMode
-        overlay.liveDesktop = foldMode == .duoPlus
+        overlay.liveDesktop = foldMode.usesLiveCapture
         overlay.openAngle = openAngle
         overlay.destroyWindow()
         holdingFreeze = false
@@ -631,10 +634,6 @@ final class AppModel {
 
     private static func stored(_ key: String, _ fallback: Double, _ range: ClosedRange<Double>) -> Double {
         min(max(UserDefaults.standard.object(forKey: key) as? Double ?? fallback, range.lowerBound), range.upperBound)
-    }
-
-    private func cannedCurveNow() -> Double {
-        Self.cannedCurve(CACurrentMediaTime() - cannedStart)
     }
 
     private static func progress(for angle: Double, open: Double, closed: Double) -> Double {
@@ -663,12 +662,30 @@ final class AppModel {
         return x * x * (3 - 2 * x)
     }
 
+    /// Critically damped follow, same family as Preview's per-frame curve.
+    private static func smoothDamp(
+        current: Double,
+        target: Double,
+        velocity: inout Double,
+        smoothTime: Double,
+        dt: Double
+    ) -> Double {
+        let smoothTime = max(0.0008, smoothTime)
+        let omega = 2 / smoothTime
+        let x = omega * dt
+        let exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+        let change = current - target
+        let temp = (velocity + omega * change) * dt
+        velocity = (velocity - omega * temp) * exp
+        return target + (change + temp) * exp
+    }
+
 }
 
 private final class TickProxy: NSObject {
-    var onTick: () -> Void = {}
+    var onTick: (TimeInterval) -> Void = { _ in }
 
     @objc func step(_ sender: CADisplayLink) {
-        onTick()
+        onTick(sender.targetTimestamp - sender.timestamp)
     }
 }

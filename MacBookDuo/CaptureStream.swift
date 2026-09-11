@@ -114,10 +114,10 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
         }
         config.showsCursor = false
         config.scalesToFit = false
-        config.queueDepth = 2
+        config.queueDepth = live ? 3 : 2
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.colorSpaceName = CGColorSpace.displayP3
-        config.minimumFrameInterval = CMTime(value: 1, timescale: live ? 24 : 20)
+        config.minimumFrameInterval = CMTime(value: 1, timescale: live ? 60 : 30)
         if live, let pixels = ScreenSnapper.capturePixelSize() {
             config.width = max(pixels.width / 2, 960)
             config.height = max(pixels.height / 2, 600)

@@ -9,6 +9,7 @@ final class DuoEngine {
     let commandQueue: MTLCommandQueue
     let pipeline: MTLRenderPipelineState
     let plusPipeline: MTLRenderPipelineState
+    let frostPipeline: MTLRenderPipelineState
     let kawasePipeline: MTLRenderPipelineState
     let sampler: MTLSamplerState
     let mipSampler: MTLSamplerState
@@ -39,12 +40,14 @@ final class DuoEngine {
               let vertex = library.makeFunction(name: "duo_vertex"),
               let fragment = library.makeFunction(name: "duo_fragment"),
               let plus = library.makeFunction(name: "duo_plus_fragment"),
+              let frost = library.makeFunction(name: "duo_frost_fragment"),
               let kawase = library.makeFunction(name: "duo_kawase") else {
             fatalError("Missing Metal functions")
         }
 
         pipeline = Self.makePipeline(device: device, vertex: vertex, fragment: fragment)
         plusPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: plus)
+        frostPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: frost)
         kawasePipeline = Self.makePipeline(device: device, vertex: vertex, fragment: kawase)
 
         let samplerDescriptor = MTLSamplerDescriptor()

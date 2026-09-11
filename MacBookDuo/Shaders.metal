@@ -199,3 +199,60 @@ fragment float4 duo_plus_fragment(VertexOut in [[stage_in]],
     colour.rgb *= pow(1.0 - maxDim * fade, 2.2);
     return float4(colour.rgb, 1.0);
 }
+
+// Frost: same hinged inverse-homography, but the sheet stays pinned in the
+// room. Soft falloff instead of a hard cut, and a milk-glass lift toward
+// the far edge.
+
+fragment float4 duo_frost_fragment(VertexOut in [[stage_in]],
+                                  constant PlusUniforms &u [[buffer(0)]],
+                                  texture2d<float> picture [[texture(0)]],
+                                  sampler samp [[sampler(0)]]) {
+    float2 screenSize = u.screenAndScale.xy;
+    float pixelScale = u.screenAndScale.z;
+    float strength = u.screenAndScale.w;
+    float maxRadius = u.blur.x;
+    float blurFloor = u.blur.y;
+    float maxDim = u.blur.z;
+    float dimReach = u.blur.w;
+    float dimFloor = u.light.x;
+    float dimStrength = u.light.y;
+    float maxLevel = u.light.z;
+    float feather = max(u.light.w, 8.0);
+
+    float2 screenPoint = float2(in.position.x / pixelScale,
+                                screenSize.y - in.position.y / pixelScale);
+    float3x3 screenToPicture = float3x3(u.column0.xyz, u.column1.xyz, u.column2.xyz);
+    float3 mapped = screenToPicture * float3(screenPoint, 1.0);
+    if (abs(mapped.z) < 1e-6) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+    float2 picturePoint = mapped.xy / mapped.z;
+
+    float2 halfSize = screenSize * 0.5;
+    float2 box = abs(picturePoint - halfSize) - halfSize;
+    float outside = length(max(box, 0.0)) + min(max(box.x, box.y), 0.0);
+    float mask = 1.0 - smoothstep(-feather * 0.2, feather, outside);
+    if (mask <= 0.002) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float2 texCoord = float2(picturePoint.x / max(screenSize.x, 1.0),
+                             1.0 - picturePoint.y / max(screenSize.y, 1.0));
+    float height = clamp(picturePoint.y / max(screenSize.y, 1.0), 0.0, 1.0);
+    float frost = strength * (blurFloor + (1.0 - blurFloor) * pow(height, 0.82));
+    float mipA = clamp(log2(max(frost * maxRadius, 1.0)), 0.0, maxLevel);
+    float mipB = clamp(mipA + 1.55, 0.0, maxLevel);
+    float3 sharp = picture.sample(samp, texCoord, level(mipA)).rgb;
+    float3 milk = picture.sample(samp, texCoord, level(mipB)).rgb;
+    float3 color = mix(sharp, milk, saturate(frost * 0.88));
+
+    float haze = pow(saturate(frost), 1.35);
+    color = mix(color, float3(0.78, 0.84, 0.93), haze * 0.26);
+    color += haze * 0.045 * float3(0.90, 0.94, 1.0);
+
+    float spread = smoothstep(0.0, max(dimReach, 0.02), height);
+    float fade = dimStrength * (dimFloor + (1.0 - dimFloor) * spread);
+    color *= pow(1.0 - maxDim * fade, 2.2);
+    return float4(color * mask, 1.0);
+}

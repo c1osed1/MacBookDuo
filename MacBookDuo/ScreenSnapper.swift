@@ -24,4 +24,13 @@ enum ScreenSnapper {
             return CGDirectDisplayID(number.uint32Value) == displayID
         }
     }
+
+    static func capturePixelSize() -> (width: Int, height: Int)? {
+        guard let screen = builtinScreen() else { return nil }
+        let scale = screen.backingScaleFactor
+        return (
+            max(Int((screen.frame.width * scale).rounded()), 1),
+            max(Int((screen.frame.height * scale).rounded()), 1)
+        )
+    }
 }

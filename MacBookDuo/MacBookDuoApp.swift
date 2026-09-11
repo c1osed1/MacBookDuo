@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         installStatusItem()
         model.start()
+        observeStatusItem()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             self?.showPopover()
@@ -89,6 +90,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.animates = false
         popover.contentViewController = host
         self.popover = popover
+        refreshStatusItem()
+    }
+
+    private func observeStatusItem() {
+        withObservationTracking {
+            _ = model.angle
+            _ = model.showsAngleInMenuBar
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.refreshStatusItem()
+                self?.observeStatusItem()
+            }
+        }
+    }
+
+    private func refreshStatusItem() {
+        guard let item = statusItem, let button = item.button else { return }
+        if model.showsAngleInMenuBar {
+            item.length = NSStatusItem.variableLength
+            button.title = String(format: " %.0f°", model.angle)
+            button.imagePosition = .imageLeading
+        } else {
+            item.length = NSStatusItem.squareLength
+            button.title = ""
+            button.imagePosition = .imageOnly
+        }
     }
 
     @objc private func togglePopover(_ sender: Any?) {

@@ -9,13 +9,18 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     private let engine: DuoEngine
     private var stream: SCStream?
     private var running = false
-    private var starting = false
+    private var startingCount = 0
     private var stoppingIntentionally = false
+    private var opChain: Task<Void, Never> = Task {}
     nonisolated(unsafe) private var textureCache: CVMetalTextureCache?
     private let outputQueue = DispatchQueue(label: "com.foldglass.macbookduo.capture", qos: .userInteractive)
     private let lock = NSLock()
     nonisolated(unsafe) private var frozenFlag = false
     private var retainedCVTexture: CVMetalTexture?
+    private var liveFrameRing: [CVMetalTexture] = []
+    nonisolated(unsafe) private var pendingCV: CVMetalTexture?
+    nonisolated(unsafe) private var pendingTexture: MTLTexture?
+    nonisolated(unsafe) private var hopScheduled = false
 
     var frozen: Bool {
         get { lock.withLock { frozenFlag } }
@@ -23,7 +28,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     var isRunning: Bool { running }
-    var isStarting: Bool { starting }
+    var isStarting: Bool { startingCount > 0 }
 
     init(engine: DuoEngine) {
         self.engine = engine
@@ -33,53 +38,100 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
         textureCache = cache
     }
 
-    func start() async {
-        guard !starting else { return }
-        starting = true
-        defer { starting = false }
-        frozen = false
-        await stopStream()
-        do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            guard let displayID = ScreenSnapper.builtinDisplayID(),
-                  let display = content.displays.first(where: { $0.displayID == displayID }) else {
-                engine.markCaptureFailed()
-                return
-            }
-
-            let bundleID = Bundle.main.bundleIdentifier
-            let excluded = content.windows.filter { $0.owningApplication?.bundleIdentifier == bundleID }
-            let filter = SCContentFilter(display: display, excludingWindows: excluded)
-
-            let config = SCStreamConfiguration()
-            config.width = display.width
-            config.height = display.height
-            config.showsCursor = false
-            config.queueDepth = 2
-            config.pixelFormat = kCVPixelFormatType_32BGRA
-            config.colorSpaceName = CGColorSpace.displayP3
-            config.minimumFrameInterval = CMTime(value: 1, timescale: 20)
-
-            let stream = SCStream(filter: filter, configuration: config, delegate: self)
-            try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
-            try await stream.startCapture()
-            self.stream = stream
-            running = true
-        } catch {
-            running = false
-            engine.markCaptureFailed()
+    func start(live: Bool = false) async {
+        startingCount += 1
+        defer { startingCount -= 1 }
+        await runSerialized {
+            await self.performStart(live: live)
         }
     }
 
     func stop() async {
         frozen = false
-        await stopStream()
+        await runSerialized {
+            await self.stopStream()
+        }
     }
 
-    func stopStream() async {
+    private func runSerialized(_ work: @escaping @MainActor () async -> Void) async {
+        let previous = opChain
+        let next = Task { @MainActor in
+            await previous.value
+            await work()
+        }
+        opChain = next
+        await next.value
+    }
+
+    private func performStart(live: Bool) async {
+        frozen = false
+        await stopStream()
+        for attempt in 0..<12 {
+            if Task.isCancelled { return }
+            do {
+                try await beginCapture(live: live)
+                return
+            } catch {
+                running = false
+                let delay = min(80 * (attempt + 1), 400)
+                try? await Task.sleep(for: .milliseconds(delay))
+            }
+        }
+        engine.markCaptureFailed()
+    }
+
+    private func beginCapture(live: Bool) async throws {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let displayID = ScreenSnapper.builtinDisplayID(),
+              let display = content.displays.first(where: { $0.displayID == displayID }) else {
+            throw CaptureStartError.noDisplay
+        }
+
+        let bundleID = Bundle.main.bundleIdentifier
+        let ownApplications = content.applications.filter { $0.bundleIdentifier == bundleID }
+        let filter = SCContentFilter(
+            display: display,
+            excludingApplications: ownApplications,
+            exceptingWindows: []
+        )
+
+        let config = SCStreamConfiguration()
+        if let pixels = ScreenSnapper.capturePixelSize() {
+            config.width = pixels.width
+            config.height = pixels.height
+        } else {
+            config.width = Int((filter.contentRect.width * CGFloat(filter.pointPixelScale)).rounded())
+            config.height = Int((filter.contentRect.height * CGFloat(filter.pointPixelScale)).rounded())
+        }
+        config.showsCursor = false
+        config.scalesToFit = false
+        config.queueDepth = 2
+        config.pixelFormat = kCVPixelFormatType_32BGRA
+        config.colorSpaceName = CGColorSpace.displayP3
+        config.minimumFrameInterval = CMTime(value: 1, timescale: live ? 24 : 20)
+        if live, let pixels = ScreenSnapper.capturePixelSize() {
+            config.width = max(pixels.width / 2, 960)
+            config.height = max(pixels.height / 2, 600)
+        }
+
+        let stream = SCStream(filter: filter, configuration: config, delegate: self)
+        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
+        try await stream.startCapture()
+        self.stream = stream
+        running = true
+    }
+
+    private func stopStream() async {
         running = false
+        lock.withLock {
+            pendingCV = nil
+            pendingTexture = nil
+            hopScheduled = false
+        }
         let current = stream
         stream = nil
+        liveFrameRing.removeAll()
+        retainedCVTexture = nil
         guard let current else { return }
         stoppingIntentionally = true
         try? await current.stopCapture()
@@ -110,10 +162,39 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
             return
         }
 
-        Task { @MainActor in
-            self.retainedCVTexture = cvTexture
-            self.engine.setSourceTexture(texture)
+        let shouldHop = lock.withLock {
+            pendingCV = cvTexture
+            pendingTexture = texture
+            if hopScheduled { return false }
+            hopScheduled = true
+            return true
         }
+        if shouldHop {
+            Task { @MainActor in
+                self.flushPending()
+            }
+        }
+    }
+
+    private func flushPending() {
+        let pair: (CVMetalTexture, MTLTexture)? = lock.withLock {
+            hopScheduled = false
+            guard let cv = pendingCV, let tex = pendingTexture else { return nil }
+            pendingCV = nil
+            pendingTexture = nil
+            return (cv, tex)
+        }
+        guard let pair else { return }
+        adopt(pair.0, texture: pair.1)
+    }
+
+    private func adopt(_ cvTexture: CVMetalTexture, texture: MTLTexture) {
+        retainedCVTexture = cvTexture
+        liveFrameRing.append(cvTexture)
+        if liveFrameRing.count > 2 {
+            liveFrameRing.removeFirst()
+        }
+        engine.setSourceTexture(texture)
     }
 
     nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
@@ -123,4 +204,8 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
             self.engine.markCaptureFailed()
         }
     }
+}
+
+private enum CaptureStartError: Error {
+    case noDisplay
 }

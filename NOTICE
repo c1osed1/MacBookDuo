@@ -7,3 +7,8 @@ description only.
 
 The lid-fold look is inspired by the iPhone Duo opening transition. This
 app does not include Apple artwork, firmware, or source.
+
+The Duo+ fold mode is adapted from Mac Duo by Makito
+(https://github.com/sumimakito/Mac-Duo), licensed under the Apache License,
+Version 2.0. That project is not affiliated with MacBook Duo.
+See https://www.apache.org/licenses/LICENSE-2.0

@@ -7,7 +7,19 @@ final class OverlayController {
     private var window: NSWindow?
     private var metalView: DuoMetalView?
     private var boundDisplayID: CGDirectDisplayID?
+    private var windowIsLive = false
+    private var presenceWindow: NSWindow?
     private(set) var isVisible = false
+    var liveDesktop = false
+    var plusLook = PlusLook() {
+        didSet { metalView?.plusLook = plusLook }
+    }
+    var foldMode: FoldMode = .glass {
+        didSet { metalView?.foldMode = foldMode }
+    }
+    var openAngle: Double = 100 {
+        didSet { metalView?.openAngle = openAngle }
+    }
 
     init(engine: DuoEngine) {
         self.engine = engine
@@ -26,12 +38,17 @@ final class OverlayController {
             return
         }
 
-        if boundDisplayID != displayID {
+        if boundDisplayID != displayID || windowIsLive != liveDesktop {
             destroyWindow()
         }
 
         if window == nil {
             let metalView = DuoMetalView(engine: engine)
+            metalView.foldMode = foldMode
+            metalView.openAngle = openAngle
+            metalView.plusLook = plusLook
+            metalView.liveDesktop = liveDesktop
+            metalView.applyChrome()
             let overlay = NSWindow(
                 contentRect: screen.frame,
                 styleMask: .borderless,
@@ -40,8 +57,8 @@ final class OverlayController {
                 screen: screen
             )
             overlay.contentView = metalView
-            overlay.isOpaque = true
-            overlay.backgroundColor = .black
+            overlay.isOpaque = !liveDesktop
+            overlay.backgroundColor = liveDesktop ? .clear : .black
             overlay.hasShadow = false
             overlay.ignoresMouseEvents = true
             overlay.level = .screenSaver
@@ -52,15 +69,23 @@ final class OverlayController {
             self.metalView = metalView
             self.window = overlay
             boundDisplayID = displayID
+            windowIsLive = liveDesktop
         }
 
         guard let window else { return }
-        if window.screen != screen {
-            window.setFrame(screen.frame, display: false)
-        } else if window.frame != screen.frame {
+        metalView?.foldMode = foldMode
+        metalView?.openAngle = openAngle
+        metalView?.plusLook = plusLook
+        metalView?.liveDesktop = liveDesktop
+        if isVisible, window.screen == screen, window.frame == screen.frame {
+            metalView?.isPaused = false
+            return
+        }
+        if window.screen != screen || window.frame != screen.frame {
             window.setFrame(screen.frame, display: false)
         }
         metalView?.frame = window.contentView?.bounds ?? screen.frame
+        metalView?.applyChrome()
         metalView?.isPaused = false
         window.orderFrontRegardless()
         isVisible = true
@@ -83,6 +108,30 @@ final class OverlayController {
         window = nil
         metalView = nil
         boundDisplayID = nil
+        windowIsLive = false
         isVisible = false
+    }
+
+    /// ScreenCaptureKit only lists apps that own a window, so exclusion of
+    /// the overlay from the capture stream needs this placeholder.
+    func keepPresence() {
+        guard presenceWindow == nil else { return }
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
+        window.ignoresMouseEvents = true
+        window.isReleasedWhenClosed = false
+        window.level = .normal
+        window.alphaValue = 0.004
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        window.sharingType = .none
+        window.orderFrontRegardless()
+        presenceWindow = window
     }
 }

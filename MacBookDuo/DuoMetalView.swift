@@ -5,6 +5,10 @@ import MetalKit
 @MainActor
 final class DuoMetalView: MTKView, MTKViewDelegate {
     var uniforms = DuoUniforms.identity
+    var foldMode: FoldMode = .glass
+    var openAngle: Double = 100
+    var plusLook = PlusLook()
+    var liveDesktop = false
     private let engine: DuoEngine
 
     init(engine: DuoEngine) {
@@ -15,16 +19,23 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
         colorPixelFormat = .bgra8Unorm
         isPaused = true
         enableSetNeedsDisplay = false
-        preferredFramesPerSecond = 120
+        preferredFramesPerSecond = 60
         autoResizeDrawable = true
         clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        layer?.isOpaque = true
+        applyChrome()
         (layer as? CAMetalLayer)?.colorspace = CGColorSpace(name: CGColorSpace.displayP3)
         (layer as? CAMetalLayer)?.pixelFormat = .bgra8Unorm
+        (layer as? CAMetalLayer)?.displaySyncEnabled = true
     }
 
     required init(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    func applyChrome() {
+        layer?.isOpaque = !liveDesktop
+        (layer as? CAMetalLayer)?.isOpaque = !liveDesktop
+        preferredFramesPerSecond = liveDesktop ? 30 : 60
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -34,11 +45,9 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
     func draw(in view: MTKView) {
         guard engine.hasSource,
               let source = engine.displayTexture,
-              let blur = engine.blurTextureOrSource(),
               let descriptor = view.currentRenderPassDescriptor,
               let drawable = view.currentDrawable,
-              let commandBuffer = engine.commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+              let commandBuffer = engine.commandQueue.makeCommandBuffer() else {
             return
         }
 
@@ -46,13 +55,44 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
         uniforms.resolution = SIMD2<Float>(Float(drawableSize.width), Float(drawableSize.height))
         self.uniforms = uniforms
 
-        encoder.setRenderPipelineState(engine.pipeline)
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<DuoUniforms>.stride, index: 0)
-        encoder.setFragmentTexture(source, index: 0)
-        encoder.setFragmentTexture(blur, index: 1)
-        encoder.setFragmentSamplerState(engine.sampler, index: 0)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        encoder.endEncoding()
+        if foldMode == .duoPlus {
+            let pointSize = bounds.size
+            let scale = Double(drawableSize.width) / max(Double(pointSize.width), 1)
+            engine.preparePlus(from: source, commandBuffer: commandBuffer, drawableSize: drawableSize)
+            guard let plus = engine.plusTexture,
+                  let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+                commandBuffer.commit()
+                return
+            }
+            var plusUniforms = DuoPlusGeometry.plusUniforms(
+                startAngle: openAngle,
+                currentAngle: Double(uniforms.angle),
+                progress: Double(uniforms.progress),
+                look: plusLook,
+                screenSize: pointSize,
+                pixelScale: scale
+            )
+            encoder.setRenderPipelineState(engine.plusPipeline)
+            encoder.setFragmentBytes(&plusUniforms, length: MemoryLayout<PlusUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(plus, index: 0)
+            encoder.setFragmentSamplerState(engine.mipSampler, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            encoder.endEncoding()
+        } else {
+            guard let blur = engine.blurTextureOrSource(),
+                  let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+                commandBuffer.commit()
+                return
+            }
+            encoder.setRenderPipelineState(engine.pipeline)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<DuoUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(source, index: 0)
+            encoder.setFragmentTexture(blur, index: 1)
+            encoder.setFragmentSamplerState(engine.sampler, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            encoder.endEncoding()
+        }
+
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }

@@ -119,9 +119,15 @@ final class LidSensor {
         var pointers = [UnsafeRawPointer?](repeating: nil, count: count)
         CFSetGetValues(cfDevices, &pointers)
 
+        var builtinMatch: IOHIDDevice?
+        var otherMatch: IOHIDDevice?
         for pointer in pointers {
             guard let pointer else { continue }
             let candidate = Unmanaged<IOHIDDevice>.fromOpaque(pointer).takeUnretainedValue()
+            let builtIn = (IOHIDDeviceGetProperty(candidate, "Built-In" as CFString) as? NSNumber)?.boolValue
+            if builtIn == false {
+                continue
+            }
             guard IOHIDDeviceOpen(candidate, options) == kIOReturnSuccess else { continue }
 
             var probe = [UInt8](repeating: 0, count: 8)
@@ -132,10 +138,16 @@ final class LidSensor {
             }
             IOHIDDeviceClose(candidate, options)
 
-            if result == kIOReturnSuccess, length >= 3 {
-                return Unmanaged.passRetained(candidate).takeRetainedValue()
+            guard result == kIOReturnSuccess, length >= 3 else { continue }
+            if builtIn == true {
+                builtinMatch = candidate
+                break
+            }
+            if otherMatch == nil {
+                otherMatch = candidate
             }
         }
-        return nil
+        guard let chosen = builtinMatch ?? otherMatch else { return nil }
+        return Unmanaged.passRetained(chosen).takeRetainedValue()
     }
 }

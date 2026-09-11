@@ -17,3 +17,40 @@ struct KawaseUniforms {
     var offset: Float = 1
     var pad: Float = 0
 }
+
+enum FoldMode: String, CaseIterable, Identifiable {
+    case glass
+    case duoPlus
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .glass: "Glass"
+        case .duoPlus: "Duo+"
+        }
+    }
+}
+
+struct PlusLook {
+    var viewingDistance: Double = 6
+    var recession: Double = 1
+    var maxBlurRadius: Double = 135
+    var blurEvenness: Double = 0
+    var maxDim: Double = 1
+    var dimReach: Double = 0.5
+
+    static let farthestEye = 6.0
+    static let nearestEye = 1.0
+}
+
+struct PlusUniforms {
+    var column0 = SIMD4<Float>.zero
+    var column1 = SIMD4<Float>.zero
+    var column2 = SIMD4<Float>.zero
+    var screenAndScale = SIMD4<Float>.zero
+    var blur = SIMD4<Float>.zero
+    var light = SIMD4<Float>.zero
+
+    static let identity = PlusUniforms()
+}

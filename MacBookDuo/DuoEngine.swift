@@ -1,14 +1,17 @@
 import Foundation
 import Metal
 import MetalKit
+import MetalPerformanceShaders
 
 @MainActor
 final class DuoEngine {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     let pipeline: MTLRenderPipelineState
+    let plusPipeline: MTLRenderPipelineState
     let kawasePipeline: MTLRenderPipelineState
     let sampler: MTLSamplerState
+    let mipSampler: MTLSamplerState
 
     private(set) var sourceTexture: MTLTexture?
     private(set) var blurTexture: MTLTexture?
@@ -17,6 +20,10 @@ final class DuoEngine {
 
     private var kawaseA: MTLTexture?
     private var kawaseB: MTLTexture?
+    private(set) var plusTexture: MTLTexture?
+    private lazy var plusScaler = MPSImageBilinearScale(device: device)
+    private(set) var sourceGeneration: UInt64 = 0
+    private var plusGeneration: UInt64 = .max
 
     var displayTexture: MTLTexture? { sourceTexture }
 
@@ -31,11 +38,13 @@ final class DuoEngine {
         guard let library = device.makeDefaultLibrary(),
               let vertex = library.makeFunction(name: "duo_vertex"),
               let fragment = library.makeFunction(name: "duo_fragment"),
+              let plus = library.makeFunction(name: "duo_plus_fragment"),
               let kawase = library.makeFunction(name: "duo_kawase") else {
             fatalError("Missing Metal functions")
         }
 
         pipeline = Self.makePipeline(device: device, vertex: vertex, fragment: fragment)
+        plusPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: plus)
         kawasePipeline = Self.makePipeline(device: device, vertex: vertex, fragment: kawase)
 
         let samplerDescriptor = MTLSamplerDescriptor()
@@ -44,17 +53,64 @@ final class DuoEngine {
         samplerDescriptor.sAddressMode = .clampToEdge
         samplerDescriptor.tAddressMode = .clampToEdge
         sampler = device.makeSamplerState(descriptor: samplerDescriptor)!
+
+        let mipDescriptor = MTLSamplerDescriptor()
+        mipDescriptor.minFilter = .linear
+        mipDescriptor.magFilter = .linear
+        mipDescriptor.mipFilter = .linear
+        mipDescriptor.sAddressMode = .clampToEdge
+        mipDescriptor.tAddressMode = .clampToEdge
+        mipSampler = device.makeSamplerState(descriptor: mipDescriptor)!
     }
 
     func setSourceTexture(_ texture: MTLTexture) {
         sourceTexture = texture
         hasSource = true
         captureFailed = false
+        sourceGeneration &+= 1
+    }
+
+    func persistSource() {
+        guard let source = sourceTexture else { return }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: source.width,
+            height: source.height,
+            mipmapped: false
+        )
+        descriptor.usage = [.shaderRead, .shaderWrite, .renderTarget]
+        descriptor.storageMode = .private
+        guard let dest = device.makeTexture(descriptor: descriptor),
+              let commands = commandQueue.makeCommandBuffer(),
+              let blit = commands.makeBlitCommandEncoder() else { return }
+        blit.copy(
+            from: source,
+            sourceSlice: 0,
+            sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: source.width, height: source.height, depth: 1),
+            to: dest,
+            destinationSlice: 0,
+            destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blit.endEncoding()
+        commands.commit()
+        commands.waitUntilCompleted()
+        sourceTexture = dest
     }
 
     func commitBlur() {
         guard let source = sourceTexture else { return }
         rebuildBlur(from: source)
+    }
+
+    func discardSource() {
+        sourceTexture = nil
+        blurTexture = nil
+        plusTexture = nil
+        hasSource = false
+        plusGeneration = .max
     }
 
     func markCaptureFailed() {
@@ -63,6 +119,44 @@ final class DuoEngine {
 
     func blurTextureOrSource() -> MTLTexture? {
         blurTexture ?? sourceTexture
+    }
+
+    func preparePlus(from source: MTLTexture, commandBuffer: MTLCommandBuffer, drawableSize: CGSize) {
+        _ = drawableSize
+        let width = source.width
+        let height = source.height
+        let sizeChanged = plusTexture?.width != width || plusTexture?.height != height
+        if sizeChanged {
+            plusTexture = makeMipTarget(width: width, height: height)
+            plusGeneration = .max
+        }
+        guard sourceGeneration != plusGeneration || sizeChanged else { return }
+        plusGeneration = sourceGeneration
+        guard let target = plusTexture else { return }
+
+        if source.width == width, source.height == height {
+            guard let blit = commandBuffer.makeBlitCommandEncoder() else { return }
+            blit.copy(
+                from: source,
+                sourceSlice: 0,
+                sourceLevel: 0,
+                sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                sourceSize: MTLSize(width: width, height: height, depth: 1),
+                to: target,
+                destinationSlice: 0,
+                destinationLevel: 0,
+                destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+            )
+            blit.generateMipmaps(for: target)
+            blit.endEncoding()
+        } else {
+            plusScaler.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: target)
+            if let mipBlit = commandBuffer.makeBlitCommandEncoder() {
+                mipBlit.generateMipmaps(for: target)
+                mipBlit.endEncoding()
+            }
+        }
+        plusTexture = target
     }
 
     private func rebuildBlur(from source: MTLTexture) {
@@ -111,6 +205,31 @@ final class DuoEngine {
         descriptor.usage = [.shaderRead, .renderTarget]
         descriptor.storageMode = .private
         return device.makeTexture(descriptor: descriptor)
+    }
+
+    private func makeMipTarget(width: Int, height: Int) -> MTLTexture? {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: width,
+            height: height,
+            mipmapped: true
+        )
+        descriptor.usage = [.shaderRead, .shaderWrite, .renderTarget]
+        descriptor.storageMode = .private
+        return device.makeTexture(descriptor: descriptor)
+    }
+
+    private func clearToBlack(_ target: MTLTexture) {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = target
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        guard let commands = commandQueue.makeCommandBuffer(),
+              let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+        encoder.endEncoding()
+        commands.commit()
+        commands.waitUntilCompleted()
     }
 
     private static func makePipeline(device: MTLDevice, vertex: MTLFunction, fragment: MTLFunction) -> MTLRenderPipelineState {

@@ -7,8 +7,9 @@
   </p>
   <p>
     Menu-bar app that plays the <strong>iPhone Duo lid-fold</strong> on a MacBook:
-    when the lid closes, the built-in display recedes as a glass pane in 3D — blur,
-    stretch, black bezels — driven by the real hinge, not a cut between screens.
+    when the lid closes, the built-in display recedes in 3D — <strong>Glass</strong>
+    freezes one frame, <strong>Duo+</strong> keeps the live desktop and warps it
+    around the hinge — driven by the real lid, not a cut between screens.
   </p>
   <p>Lives in the menu bar only. No Dock window.</p>
 </div>
@@ -28,8 +29,9 @@
 4. Quit from the menu-bar panel so capture actually stops (otherwise the
    system recording indicator can stick).
 
-**Depth** controls how far the glass recedes. Overlay is limited to the
-built-in Liquid Retina display.
+**Look** switches Glass and Duo+. **Depth** (Glass) and the Duo+ sliders
+control how far the pane recedes. Overlay is limited to the built-in
+Liquid Retina display. See the [changelog](CHANGELOG.md).
 
 ## Build
 
@@ -66,10 +68,11 @@ your Apple Development identity so Screen Recording permission survives rebuilds
 
 1. `LidSensor` reads the hinge as an IOHID feature report (degrees, ~0 closed
    to ~180 open).
-2. `CaptureStream` freezes a ScreenCaptureKit frame of the built-in display
-   when a fold starts.
-3. `DuoEngine` / `Shaders.metal` draw a perspective quad rotated around the
-   bottom hinge, with Kawase blur and a circular glass falloff toward the top.
+2. `CaptureStream` takes the built-in display through ScreenCaptureKit:
+   Glass freezes one frame and stops; Duo+ stays live.
+3. `DuoEngine` / `Shaders.metal` draw the fold: Glass is a receding pane
+   with Kawase blur; Duo+ inverse-homography warps the live picture around
+   the hinge.
 
 ## Privacy
 

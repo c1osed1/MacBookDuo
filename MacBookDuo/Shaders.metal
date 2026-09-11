@@ -147,3 +147,56 @@ fragment float4 duo_fragment(VertexOut in [[stage_in]],
 
     return float4(color * mask, 1.0);
 }
+
+// Duo+: inverse-homography sample of a live picture, with height-based
+// mip blur and dimming. Adapted from Mac Duo by Makito (Apache-2.0):
+// https://github.com/sumimakito/Mac-Duo
+
+struct PlusUniforms {
+    float4 column0;
+    float4 column1;
+    float4 column2;
+    float4 screenAndScale;
+    float4 blur;
+    float4 light;
+};
+
+fragment float4 duo_plus_fragment(VertexOut in [[stage_in]],
+                                 constant PlusUniforms &u [[buffer(0)]],
+                                 texture2d<float> picture [[texture(0)]],
+                                 sampler samp [[sampler(0)]]) {
+    float2 screenSize = u.screenAndScale.xy;
+    float pixelScale = u.screenAndScale.z;
+    float strength = u.screenAndScale.w;
+    float maxRadius = u.blur.x;
+    float blurFloor = u.blur.y;
+    float maxDim = u.blur.z;
+    float dimReach = u.blur.w;
+    float dimFloor = u.light.x;
+    float dimStrength = u.light.y;
+    float maxLevel = u.light.z;
+
+    float2 screenPoint = float2(in.position.x / pixelScale,
+                                screenSize.y - in.position.y / pixelScale);
+    float3x3 screenToPicture = float3x3(u.column0.xyz, u.column1.xyz, u.column2.xyz);
+    float3 mapped = screenToPicture * float3(screenPoint, 1.0);
+    if (abs(mapped.z) < 1e-6) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+    float2 picturePoint = mapped.xy / mapped.z;
+    if (picturePoint.x < 0.0 || picturePoint.x > screenSize.x ||
+        picturePoint.y < 0.0 || picturePoint.y > screenSize.y) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float2 texCoord = float2(picturePoint.x / max(screenSize.x, 1.0),
+                             1.0 - picturePoint.y / max(screenSize.y, 1.0));
+    float height = clamp(picturePoint.y / max(screenSize.y, 1.0), 0.0, 1.0);
+    float blurAmt = strength * (blurFloor + (1.0 - blurFloor) * height);
+    float mipLevel = clamp(log2(max(blurAmt * maxRadius, 1.0)), 0.0, maxLevel);
+    float4 colour = picture.sample(samp, texCoord, level(mipLevel));
+    float spread = smoothstep(0.0, max(dimReach, 0.02), height);
+    float fade = dimStrength * (dimFloor + (1.0 - dimFloor) * spread);
+    colour.rgb *= pow(1.0 - maxDim * fade, 2.2);
+    return float4(colour.rgb, 1.0);
+}

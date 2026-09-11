@@ -1,13 +1,17 @@
-# MacBook Duo
-
-[![Build](https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml/badge.svg)](https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml)
-[![Release](https://github.com/c1osed1/MacBookDuo/releases/latest/badge.svg)](https://github.com/c1osed1/MacBookDuo/releases/latest)
-
-Menu-bar app that plays the **iPhone Duo lid-fold** on a MacBook: when the
-lid closes, the built-in display recedes as a glass pane in 3D — blur, stretch,
-black bezels — driven by the real hinge, not a cut between screens.
-
-Lives in the menu bar only. No Dock window.
+<div align="center">
+  <img src="docs/icon.png" width="144" height="144" alt="MacBook Duo">
+  <h1>MacBook Duo</h1>
+  <p>
+    <a href="https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml"><img src="https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml/badge.svg" alt="Build"></a>
+    <a href="https://github.com/c1osed1/MacBookDuo/releases/latest"><img src="https://github.com/c1osed1/MacBookDuo/releases/latest/badge.svg" alt="Release"></a>
+  </p>
+  <p>
+    Menu-bar app that plays the <strong>iPhone Duo lid-fold</strong> on a MacBook:
+    when the lid closes, the built-in display recedes as a glass pane in 3D — blur,
+    stretch, black bezels — driven by the real hinge, not a cut between screens.
+  </p>
+  <p>Lives in the menu bar only. No Dock window.</p>
+</div>
 
 ## Requirements
 

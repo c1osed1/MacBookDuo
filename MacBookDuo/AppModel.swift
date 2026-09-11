@@ -47,9 +47,6 @@ final class AppModel {
     var dimReach: Double {
         didSet { UserDefaults.standard.set(dimReach, forKey: "dimReach") }
     }
-    var showsAngleInMenuBar: Bool {
-        didSet { UserDefaults.standard.set(showsAngleInMenuBar, forKey: "showsAngleInMenuBar") }
-    }
     var perspective: Double {
         get {
             (PlusLook.farthestEye - viewingDistance) / (PlusLook.farthestEye - PlusLook.nearestEye)
@@ -70,7 +67,6 @@ final class AppModel {
     }
     var demoAngle: Double = 110
     var driveDisplayFromDemo = false
-    var studioOpen = false
 
     let sensor = LidSensor()
     let engine: DuoEngine
@@ -135,7 +131,6 @@ final class AppModel {
         blurEvenness = Self.stored("blurEvenness", 0, 0...1)
         maxDim = Self.stored("maxDim", 1, 0...1)
         dimReach = Self.stored("dimReach", 0.5, 0.2...1)
-        showsAngleInMenuBar = UserDefaults.standard.object(forKey: "showsAngleInMenuBar") as? Bool ?? false
         engine = DuoEngine()
         overlay = OverlayController(engine: engine)
         capture = CaptureStream(engine: engine)
@@ -394,11 +389,6 @@ final class AppModel {
         sawOpenPose = smoothedAngle >= openAngle - 1
         peakAngle = max(peakAngle, smoothedAngle)
         endFold(keepCapture: false)
-    }
-
-    func openStudio() {
-        studioOpen = true
-        StudioWindow.shared.show(model: self)
     }
 
     func resetLook() {

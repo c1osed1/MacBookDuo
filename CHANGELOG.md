@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3 — 2026-09-11
+
+Leave the menu bar. Launch opens a System Settings–style window in the Dock; the lid fold still runs while the app is open.
+
 ## 1.2.3 — 2026-09-11
 
 Do not pop the menu open on launch. After a reboot, enable MacBook Duo under System Settings → Menu Bar if the extra is missing.

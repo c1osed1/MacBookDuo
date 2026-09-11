@@ -6,12 +6,12 @@
     <a href="https://github.com/c1osed1/MacBookDuo/releases"><img src="https://img.shields.io/github/v/release/c1osed1/MacBookDuo?include_prereleases&label=release" alt="Release"></a>
   </p>
   <p>
-    Menu-bar app that plays the <strong>iPhone Duo lid-fold</strong> on a MacBook:
+    App that plays the <strong>iPhone Duo lid-fold</strong> on a MacBook:
     when the lid closes, the built-in display recedes in 3D — <strong>Glass</strong>
     freezes one frame, <strong>Duo+</strong> keeps the live desktop and warps it
     around the hinge — driven by the real lid, not a cut between screens.
   </p>
-  <p>Lives in the menu bar only. No Dock window.</p>
+  <p>Opens a System Settings–style window. No menu-bar extra.</p>
   <img width="392" height="816" alt="image" src="https://github.com/user-attachments/assets/6dae323b-7ccd-4a2d-9b4b-6069d701d27b" />
 
 </div>
@@ -25,10 +25,10 @@
 
 ## Use
 
-1. Build and launch. A split-rectangle icon appears in the menu bar.
+1. Build and launch. A settings window opens.
 2. Grant Screen Recording when macOS asks.
-3. Close the lid slowly, or click **Preview on screen**.
-4. Quit from the menu-bar panel so capture actually stops (otherwise the
+3. Close the lid slowly, or click **Preview**.
+4. Quit from the window or Dock so capture actually stops (otherwise the
    system recording indicator can stick).
 
 **Look** switches Glass and Duo+. **Depth** (Glass) and the Duo+ sliders

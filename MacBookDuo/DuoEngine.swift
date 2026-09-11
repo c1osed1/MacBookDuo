@@ -50,7 +50,11 @@ final class DuoEngine {
         sourceTexture = texture
         hasSource = true
         captureFailed = false
-        rebuildBlur(from: texture)
+    }
+
+    func commitBlur() {
+        guard let source = sourceTexture else { return }
+        rebuildBlur(from: source)
     }
 
     func markCaptureFailed() {

@@ -16,7 +16,7 @@ enum ScreenSnapper {
     }
 
     static func builtinScreen() -> NSScreen? {
-        guard let displayID = builtinDisplayID() else { return NSScreen.main }
+        guard let displayID = builtinDisplayID() else { return nil }
         return NSScreen.screens.first { screen in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
                 return false

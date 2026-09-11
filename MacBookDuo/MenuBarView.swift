@@ -23,6 +23,22 @@ struct MenuBarView: View {
             Slider(value: $model.intensity, in: 0.8...1.85) {
                 Text("Depth")
             }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Start fold")
+                    .foregroundStyle(.secondary)
+                Slider(value: $model.openAngle, in: 50...160)
+                Text(String(format: "Begins at %.0f°", model.openAngle))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Fully folded")
+                    .foregroundStyle(.secondary)
+                Slider(value: $model.closedAngle, in: 5...50)
+                Text(String(format: "Done at %.0f°", model.closedAngle))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Toggle("Enable lid effect", isOn: $model.enabled)
             HStack {
                 Button("Preview on screen") {
@@ -68,7 +84,7 @@ final class StudioWindow {
             let window = NSWindow(contentViewController: host)
             window.title = "MacBook Duo Studio"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-            window.setContentSize(NSSize(width: 420, height: 420))
+            window.setContentSize(NSSize(width: 420, height: 520))
             window.center()
             window.isReleasedWhenClosed = false
             self.window = window
@@ -92,7 +108,7 @@ struct StudioView: View {
                 VStack(alignment: .leading) {
                     Text("Demo angle")
                     Slider(value: $model.demoAngle, in: 10...140)
-                    Text("100° is a normal laptop pose. Drag toward 18° to fold, or close the real lid.")
+                    Text("\(Int(model.openAngle))° is a normal laptop pose. Drag toward \(Int(model.closedAngle))° to fold, or close the real lid.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -102,6 +118,18 @@ struct StudioView: View {
                     Text("Depth")
                 }
                 Text("How far the glass recedes as the lid closes.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: $model.openAngle, in: 50...160) {
+                    Text("Start fold")
+                }
+                Text("Animation begins as the lid passes this angle.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: $model.closedAngle, in: 5...50) {
+                    Text("Fully folded")
+                }
+                Text("Fully receded pose. Keep this below Start fold.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Enable lid effect", isOn: $model.enabled)
@@ -114,6 +142,6 @@ struct StudioView: View {
         }
         .formStyle(.grouped)
         .padding(.vertical, 8)
-        .frame(minWidth: 380, minHeight: 360)
+        .frame(minWidth: 380, minHeight: 480)
     }
 }

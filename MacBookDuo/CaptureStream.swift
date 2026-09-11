@@ -9,6 +9,8 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     private let engine: DuoEngine
     private var stream: SCStream?
     private var running = false
+    private var starting = false
+    private var stoppingIntentionally = false
     nonisolated(unsafe) private var textureCache: CVMetalTextureCache?
     private let outputQueue = DispatchQueue(label: "com.foldglass.macbookduo.capture", qos: .userInteractive)
     private let lock = NSLock()
@@ -21,6 +23,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     var isRunning: Bool { running }
+    var isStarting: Bool { starting }
 
     init(engine: DuoEngine) {
         self.engine = engine
@@ -31,7 +34,11 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     func start() async {
-        await stop()
+        guard !starting else { return }
+        starting = true
+        defer { starting = false }
+        frozen = false
+        await stopStream()
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             guard let displayID = ScreenSnapper.builtinDisplayID(),
@@ -48,10 +55,10 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
             config.width = display.width
             config.height = display.height
             config.showsCursor = false
-            config.queueDepth = 3
+            config.queueDepth = 2
             config.pixelFormat = kCVPixelFormatType_32BGRA
             config.colorSpaceName = CGColorSpace.displayP3
-            config.minimumFrameInterval = CMTime(value: 1, timescale: 24)
+            config.minimumFrameInterval = CMTime(value: 1, timescale: 20)
 
             let stream = SCStream(filter: filter, configuration: config, delegate: self)
             try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
@@ -66,11 +73,17 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
 
     func stop() async {
         frozen = false
+        await stopStream()
+    }
+
+    func stopStream() async {
         running = false
         let current = stream
         stream = nil
         guard let current else { return }
+        stoppingIntentionally = true
         try? await current.stopCapture()
+        stoppingIntentionally = false
     }
 
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
@@ -105,6 +118,8 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
 
     nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
         Task { @MainActor in
+            if self.stoppingIntentionally { return }
+            self.running = false
             self.engine.markCaptureFailed()
         }
     }

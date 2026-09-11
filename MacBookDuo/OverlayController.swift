@@ -1,10 +1,12 @@
 import AppKit
+import CoreGraphics
 
 @MainActor
 final class OverlayController {
     private let engine: DuoEngine
     private var window: NSWindow?
     private var metalView: DuoMetalView?
+    private var boundDisplayID: CGDirectDisplayID?
     private(set) var isVisible = false
 
     init(engine: DuoEngine) {
@@ -18,8 +20,15 @@ final class OverlayController {
 
     func show() {
         guard engine.hasSource else { return }
-        let screen = ScreenSnapper.builtinScreen() ?? NSScreen.main
-        guard let screen else { return }
+        guard let screen = ScreenSnapper.builtinScreen(),
+              let displayID = ScreenSnapper.builtinDisplayID() else {
+            hide()
+            return
+        }
+
+        if boundDisplayID != displayID {
+            destroyWindow()
+        }
 
         if window == nil {
             let metalView = DuoMetalView(engine: engine)
@@ -42,19 +51,38 @@ final class OverlayController {
             overlay.sharingType = .none
             self.metalView = metalView
             self.window = overlay
+            boundDisplayID = displayID
         }
 
         guard let window else { return }
-        window.setFrame(screen.frame, display: false)
+        if window.screen != screen {
+            window.setFrame(screen.frame, display: false)
+        } else if window.frame != screen.frame {
+            window.setFrame(screen.frame, display: false)
+        }
         metalView?.frame = window.contentView?.bounds ?? screen.frame
         metalView?.isPaused = false
         window.orderFrontRegardless()
         isVisible = true
     }
 
+    func reassert() {
+        guard isVisible else { return }
+        show()
+    }
+
     func hide() {
         metalView?.isPaused = true
         window?.orderOut(nil)
+        isVisible = false
+    }
+
+    func destroyWindow() {
+        metalView?.isPaused = true
+        window?.orderOut(nil)
+        window = nil
+        metalView = nil
+        boundDisplayID = nil
         isVisible = false
     }
 }

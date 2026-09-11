@@ -42,7 +42,7 @@ jobs:
             SHOULD=true
           elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${COMMIT_MESSAGE}" == *"[RELEASE]"* ]]; then
             SHOULD=true
-            if [[ "${COMMIT_MESSAGE}" =~ \[RELEASE\][[:space:]]*v?([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            if [[ "${COMMIT_MESSAGE}" =~ \[RELEASE\][[:space:]]*v?([0-9]+\.[0-9]+(\.[0-9]+)?) ]]; then
               VERSION="${BASH_REMATCH[1]}"
             fi
           fi

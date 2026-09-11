@@ -3,7 +3,7 @@
   <h1>MacBook Duo</h1>
   <p>
     <a href="https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml"><img src="https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml/badge.svg" alt="Build"></a>
-    <a href="https://github.com/c1osed1/MacBookDuo/releases/latest"><img src="https://github.com/c1osed1/MacBookDuo/releases/latest/badge.svg" alt="Release"></a>
+    <a href="https://github.com/c1osed1/MacBookDuo/releases"><img src="https://img.shields.io/github/v/release/c1osed1/MacBookDuo?include_prereleases&label=release" alt="Release"></a>
   </p>
   <p>
     Menu-bar app that plays the <strong>iPhone Duo lid-fold</strong> on a MacBook:

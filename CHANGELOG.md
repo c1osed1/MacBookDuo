@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3 — 2026-09-11
+
+Do not pop the menu open on launch. After a reboot, enable MacBook Duo under System Settings → Menu Bar if the extra is missing.
+
 ## 1.2.2 — 2026-09-11
 
 Glass now freezes a real desktop frame and keeps it after Screen Recording stops.

@@ -41,10 +41,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installStatusItem()
         model.start()
         observeStatusItem()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            self?.showPopover()
-        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

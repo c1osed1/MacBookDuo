@@ -3,9 +3,6 @@ import Foundation
 import simd
 
 /// Hinged-sheet projection used by Duo+.
-///
-/// Adapted from Mac Duo by Makito (Apache-2.0):
-/// https://github.com/sumimakito/Mac-Duo
 enum DuoPlusGeometry {
     static let paddingInPoints: Double = 120
     private static let maxSeparationDegrees = 88.0

@@ -149,8 +149,7 @@ fragment float4 duo_fragment(VertexOut in [[stage_in]],
 }
 
 // Duo+: inverse-homography sample of a live picture, with height-based
-// mip blur and dimming. Adapted from Mac Duo by Makito (Apache-2.0):
-// https://github.com/sumimakito/Mac-Duo
+// mip blur and dimming.
 
 struct PlusUniforms {
     float4 column0;

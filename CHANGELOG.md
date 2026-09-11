@@ -43,8 +43,6 @@ Duo+ keeps the live desktop and warps it around the hinge. Glass still freezes o
 - Skip Studio Display HID that reads 0°; start fold only on a closing motion
 - Launch at login, angle in the menu bar, and Reset look
 
-Duo+ is adapted from [Mac Duo](https://github.com/sumimakito/Mac-Duo) by Makito (Apache-2.0).
-
 ## 1.1 — 2026-09-11
 
 Keep the fold on the built-in display.

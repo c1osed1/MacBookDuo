@@ -94,6 +94,7 @@ final class AppModel {
     private var holdingFreeze = false
     private var foldSessionActive = false
     private var sessionGeneration: UInt64 = 0
+    private var captureEpoch: UInt64?
     private var angularVelocity = 0.0
     private var lastAngleSample = 0.0
     private var lastAngleSampleTime: TimeInterval = 0
@@ -275,6 +276,7 @@ final class AppModel {
             hideHold = 0
             holdingFreeze = false
             foldSessionActive = false
+            captureEpoch = nil
             capture.frozen = false
             if overlay.isVisible { overlay.hide() }
             if capture.isRunning || capture.isStarting {
@@ -303,7 +305,7 @@ final class AppModel {
             if hideHold > 8 {
                 endFold(keepCapture: false)
             }
-        } else if foldSessionActive || capture.frozen {
+        } else if foldSessionActive || capture.frozen || captureEpoch != nil {
             endFold(keepCapture: false)
         }
 
@@ -312,7 +314,7 @@ final class AppModel {
             ensureCaptureStarted()
         } else if !folding, !prewarming, captureStopTask == nil, (capture.isRunning || capture.isStarting) {
             if capture.isRunning {
-                engine.persistSource()
+                _ = engine.persistSource()
             }
             requestCaptureStop(discard: false)
         }
@@ -411,7 +413,8 @@ final class AppModel {
 
     private func presentFold() {
         overlay.keepPresence()
-        if !foldSessionActive {
+        if captureEpoch == nil {
+            captureEpoch = engine.sourceGeneration
             sessionGeneration = engine.sourceGeneration
             holdingFreeze = false
             capture.frozen = false
@@ -434,10 +437,15 @@ final class AppModel {
             foldSessionActive = true
             return
         }
-        let fresh = engine.sourceGeneration > sessionGeneration
-        guard fresh || engine.hasSource else { return }
-        if fresh || (!capture.isRunning && !capture.isStarting) {
+        let hasFreshFrame = engine.sourceGeneration > sessionGeneration
+        if engine.hasSource, hasFreshFrame || capture.isRunning {
             commitFreezeAndShow()
+            foldSessionActive = true
+            return
+        }
+        if engine.hasSource {
+            overlay.liveDesktop = false
+            overlay.show()
             foldSessionActive = true
         }
     }
@@ -447,10 +455,11 @@ final class AppModel {
         holdingFreeze = false
         capture.frozen = false
         foldSessionActive = false
+        captureEpoch = nil
         hideHold = 0
         keepHotUntil = 0
         if keepCapture { return }
-        engine.persistSource()
+        _ = engine.persistSource()
         requestCaptureStop(discard: false)
     }
 
@@ -467,8 +476,8 @@ final class AppModel {
     }
 
     private func commitFreezeAndShow() {
-        capture.frozen = true
-        engine.persistSource()
+        capture.freeze()
+        guard engine.persistSource() else { return }
         engine.commitBlur()
         holdingFreeze = true
         overlay.liveDesktop = false
@@ -480,7 +489,9 @@ final class AppModel {
 
     private func ensureCaptureStarted() {
         overlay.keepPresence()
-        guard !capture.isRunning, !capture.isStarting, captureTask == nil else { return }
+        if capture.isRunning || capture.isStarting || captureTask != nil {
+            return
+        }
         captureTask = Task { [weak self] in
             await self?.capture.start(live: self?.foldMode == .duoPlus)
             self?.captureTask = nil
@@ -605,7 +616,7 @@ final class AppModel {
     private func wantsFold(now: TimeInterval) -> Bool {
         if cannedProgress != nil { return true }
         let openingPastStart = angularVelocity >= 2 && smoothedAngle >= openAngle
-        if overlay.isVisible {
+        if overlay.isVisible || captureEpoch != nil {
             if openingPastStart { return false }
             return smoothedProgress > 0.012
         }
@@ -620,6 +631,7 @@ final class AppModel {
         overlay.destroyWindow()
         holdingFreeze = false
         foldSessionActive = false
+        captureEpoch = nil
         capture.frozen = false
         cannedProgress = nil
         demoTask?.cancel()
@@ -660,6 +672,7 @@ final class AppModel {
         let x = min(max(t, 0), 1)
         return x * x * (3 - 2 * x)
     }
+
 }
 
 private final class TickProxy: NSObject {

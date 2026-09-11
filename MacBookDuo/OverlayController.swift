@@ -53,7 +53,7 @@ final class OverlayController {
                 contentRect: screen.frame,
                 styleMask: .borderless,
                 backing: .buffered,
-                defer: true,
+                defer: false,
                 screen: screen
             )
             overlay.contentView = metalView
@@ -130,7 +130,7 @@ final class OverlayController {
         window.level = .normal
         window.alphaValue = 0.004
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-        window.sharingType = .none
+        window.sharingType = .readOnly
         window.orderFrontRegardless()
         presenceWindow = window
     }

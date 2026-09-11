@@ -70,8 +70,11 @@ final class DuoEngine {
         sourceGeneration &+= 1
     }
 
-    func persistSource() {
-        guard let source = sourceTexture else { return }
+    func persistSource() -> Bool {
+        guard let source = sourceTexture else { return false }
+        if source.storageMode == .private, source.usage.contains(.shaderWrite) {
+            return true
+        }
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm,
             width: source.width,
@@ -82,7 +85,7 @@ final class DuoEngine {
         descriptor.storageMode = .private
         guard let dest = device.makeTexture(descriptor: descriptor),
               let commands = commandQueue.makeCommandBuffer(),
-              let blit = commands.makeBlitCommandEncoder() else { return }
+              let blit = commands.makeBlitCommandEncoder() else { return false }
         blit.copy(
             from: source,
             sourceSlice: 0,
@@ -98,6 +101,7 @@ final class DuoEngine {
         commands.commit()
         commands.waitUntilCompleted()
         sourceTexture = dest
+        return true
     }
 
     func commitBlur() {
@@ -173,6 +177,7 @@ final class DuoEngine {
         encodeKawase(commandBuffer: commandBuffer, source: kawaseB, destination: kawaseA, offset: 3.5)
         encodeKawase(commandBuffer: commandBuffer, source: kawaseA, destination: kawaseB, offset: 5.5)
         commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
         blurTexture = kawaseB
     }
 

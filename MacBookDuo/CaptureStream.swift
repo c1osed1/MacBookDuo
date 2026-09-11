@@ -27,6 +27,15 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
         set { lock.withLock { frozenFlag = newValue } }
     }
 
+    func freeze() {
+        lock.withLock {
+            frozenFlag = true
+            pendingCV = nil
+            pendingTexture = nil
+            hopScheduled = false
+        }
+    }
+
     var isRunning: Bool { running }
     var isStarting: Bool { startingCount > 0 }
 
@@ -47,7 +56,6 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     func stop() async {
-        frozen = false
         await runSerialized {
             await self.stopStream()
         }
@@ -87,8 +95,9 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
             throw CaptureStartError.noDisplay
         }
 
-        let bundleID = Bundle.main.bundleIdentifier
-        let ownApplications = content.applications.filter { $0.bundleIdentifier == bundleID }
+        guard let ownApplications = CaptureFilterSafety.excludedApplications(in: content) else {
+            throw CaptureStartError.notExcludable
+        }
         let filter = SCContentFilter(
             display: display,
             excludingApplications: ownApplications,
@@ -179,6 +188,11 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     private func flushPending() {
         let pair: (CVMetalTexture, MTLTexture)? = lock.withLock {
             hopScheduled = false
+            if frozenFlag {
+                pendingCV = nil
+                pendingTexture = nil
+                return nil
+            }
             guard let cv = pendingCV, let tex = pendingTexture else { return nil }
             pendingCV = nil
             pendingTexture = nil
@@ -189,6 +203,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     private func adopt(_ cvTexture: CVMetalTexture, texture: MTLTexture) {
+        if frozen { return }
         retainedCVTexture = cvTexture
         liveFrameRing.append(cvTexture)
         if liveFrameRing.count > 2 {
@@ -208,4 +223,5 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
 
 private enum CaptureStartError: Error {
     case noDisplay
+    case notExcludable
 }

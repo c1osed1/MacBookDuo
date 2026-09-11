@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2 — 2026-09-11
+
+Glass now freezes a real desktop frame and keeps it after Screen Recording stops.
+
+- Persist the freeze so Glass does not go blank when the capture stream ends
+- Skip capture until ScreenCaptureKit can exclude this process (fail closed)
+- Show the overlay as soon as a frame exists instead of waiting for another
+
 ## 1.2.1 — 2026-09-11
 
 Stop Screen Recording when the lid opens again, and start the next fold instead of leaving capture running with no overlay.

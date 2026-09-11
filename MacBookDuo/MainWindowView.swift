@@ -185,6 +185,8 @@ private struct GeneralPane: View {
                 }
             } header: {
                 Text("App")
+            } footer: {
+                Text("Close this window to leave the Dock. MacBook Duo stays in the menu bar and the lid fold keeps running.")
             }
         }
         .onAppear {

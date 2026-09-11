@@ -14,12 +14,13 @@ enum MacBookDuoMain {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
     nonisolated(unsafe) static var retained: AppDelegate?
     private static let showWindowNote = Notification.Name("com.foldglass.macbookduo.showWindow")
 
     let model = AppModel()
     private var mainWindow: NSWindow?
+    private var statusItem: NSStatusItem?
     private var isQuitting = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -38,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
+        installStatusItem()
         installMainWindow()
         model.start()
         NSApp.activate(ignoringOtherApps: true)
@@ -49,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        false
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -66,13 +68,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         DistributedNotificationCenter.default().removeObserver(self, name: Self.showWindowNote, object: nil)
     }
 
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(toggleEnabled(_:)) {
+            menuItem.state = model.enabled ? .on : .off
+        }
+        return true
+    }
+
     @objc func showMainWindow() {
+        NSApp.setActivationPolicy(.regular)
         if mainWindow == nil {
             installMainWindow()
         } else {
             mainWindow?.makeKeyAndOrderFront(nil)
         }
         NSApp.activate(ignoringOtherApps: true)
+        statusItem?.isVisible = true
+    }
+
+    @objc func preview(_ sender: Any?) {
+        model.playCannedDemo()
+    }
+
+    @objc func toggleEnabled(_ sender: Any?) {
+        model.enabled.toggle()
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender === mainWindow, !isQuitting else { return true }
+        sender.orderOut(nil)
+        NSApp.setActivationPolicy(.accessory)
+        statusItem?.isVisible = true
+        return false
     }
 
     private func installMainWindow() {
@@ -85,15 +112,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.setContentSize(NSSize(width: 900, height: 620))
         window.minSize = NSSize(width: 720, height: 480)
         window.center()
-        window.isReleasedWhenClosed = true
+        window.isReleasedWhenClosed = false
         window.delegate = self
         window.makeKeyAndOrderFront(nil)
         mainWindow = window
     }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard sender === mainWindow, !isQuitting else { return true }
-        NSApp.terminate(nil)
-        return false
+    private func installStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.autosaveName = "com.foldglass.macbookduo.statusItem.icon.v2"
+        item.behavior = []
+        item.isVisible = true
+        if let button = item.button {
+            button.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "MacBook Duo")
+            button.image?.isTemplate = true
+            button.imagePosition = .imageOnly
+            button.toolTip = "MacBook Duo"
+        }
+
+        let menu = NSMenu()
+        let title = NSMenuItem(title: "MacBook Duo", action: nil, keyEquivalent: "")
+        title.isEnabled = false
+        menu.addItem(title)
+        menu.addItem(.separator())
+        menu.addItem(menuItem("Settings…", action: #selector(showMainWindow), key: ","))
+        menu.addItem(menuItem("Preview", action: #selector(preview(_:))))
+        menu.addItem(.separator())
+        menu.addItem(menuItem("Enable lid effect", action: #selector(toggleEnabled(_:))))
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit MacBook Duo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        menu.addItem(quit)
+        item.menu = menu
+        statusItem = item
+    }
+
+    private func menuItem(_ title: String, action: Selector, key: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        item.target = self
+        return item
     }
 }

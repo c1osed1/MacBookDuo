@@ -11,7 +11,7 @@
     freezes one frame, <strong>Duo+</strong> keeps the live desktop and warps it
     around the hinge — driven by the real lid, not a cut between screens.
   </p>
-  <p>Opens a System Settings–style window. No menu-bar extra.</p>
+  <p>Opens a System Settings–style window. Close it to leave the Dock; the lid fold keeps running from the menu bar extra.</p>
   <img width="392" height="816" alt="image" src="https://github.com/user-attachments/assets/6dae323b-7ccd-4a2d-9b4b-6069d701d27b" />
 
 </div>
@@ -28,7 +28,7 @@
 1. Build and launch. A settings window opens.
 2. Grant Screen Recording when macOS asks.
 3. Close the lid slowly, or click **Preview**.
-4. Close the window or quit from the Dock so capture stops.
+4. Close the window to hide the Dock icon; quit from the menu bar extra so capture stops.
 
 **Look** switches Glass and Duo+. **Depth** (Glass) and the Duo+ sliders
 control how far the pane recedes. Overlay is limited to the built-in

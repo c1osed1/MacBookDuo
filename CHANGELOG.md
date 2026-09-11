@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 — 2026-09-11
+
+Close the settings window to leave the Dock. The lid fold keeps running from a menu bar extra; quit from there to stop capture.
+
 ## 1.3.2 — 2026-09-11
 
 Closing the settings window quits the app so it leaves the Dock and stops capture.

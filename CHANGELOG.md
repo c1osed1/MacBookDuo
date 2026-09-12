@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-Frost keeps the far edge milky instead of punching a black hole. Blur is a continuous Gaussian, with a little hinge chroma.
+## 1.5.1 — 2026-09-12
+
+Frost keeps the far edge milky instead of punching a black hole. Blur is a continuous Gaussian, with a little hinge chroma. Opening the lid after a full close plays the fold in reverse.
 
 ## 1.5.0 — 2026-09-12
 

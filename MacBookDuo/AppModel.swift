@@ -98,6 +98,7 @@ final class AppModel {
     private var lastClosingTime: TimeInterval = -.greatestFiniteMagnitude
     private var peakAngle = 0.0
     private var sawOpenPose = false
+    private var closedSession = false
     private var keepHotUntil: TimeInterval = 0
     private var captureTask: Task<Void, Never>?
     private var captureStopTask: Task<Void, Never>?
@@ -190,6 +191,9 @@ final class AppModel {
 
     func handleEnvironmentChange() {
         if ScreenSnapper.builtinScreen() == nil {
+            if smoothedProgress > 0.25 || smoothedAngle < openAngle {
+                closedSession = true
+            }
             overlay.destroyWindow()
             holdingFreeze = false
             requestCaptureStop(discard: true)
@@ -199,6 +203,10 @@ final class AppModel {
 
         installDisplayLink()
         overlay.reassert()
+        keepHotUntil = CACurrentMediaTime() + 2.4
+        if closedSession {
+            ensureCaptureStarted()
+        }
     }
 
     func tick(frameDt: TimeInterval) {
@@ -247,8 +255,14 @@ final class AppModel {
         overlay.uniforms = uniforms
 
         peakAngle = max(peakAngle, smoothedAngle)
+        if smoothedProgress >= 0.92 || smoothedAngle <= closedAngle + 2 {
+            closedSession = true
+        }
         if smoothedAngle >= openAngle - 1 {
             sawOpenPose = true
+            if smoothedProgress < 0.02 {
+                closedSession = false
+            }
         }
 
         guard enabled else {
@@ -267,9 +281,13 @@ final class AppModel {
         }
 
         if ScreenSnapper.builtinScreen() == nil {
+            if smoothedProgress > 0.25 || smoothedAngle < openAngle {
+                closedSession = true
+            }
             overlay.hide()
             holdingFreeze = false
             foldSessionActive = false
+            captureEpoch = nil
             syncTickRate()
             return
         }
@@ -498,7 +516,11 @@ final class AppModel {
     private func wantsPrewarm(now: TimeInterval) -> Bool {
         guard enabled, cannedProgress == nil, !overlay.isVisible else { return false }
         let closing = angularVelocity <= -4 || now - lastClosingTime < 1.2
-        return closing
+        let openingFromClosed = closedSession
+            && angularVelocity >= 2
+            && smoothedAngle < openAngle
+            && smoothedAngle >= closedAngle
+        return (closing || openingFromClosed)
             && smoothedAngle <= openAngle + 16
             && smoothedAngle >= closedAngle
     }
@@ -508,7 +530,9 @@ final class AppModel {
             || cannedProgress != nil
             || smoothedProgress > 0.008
             || holdingFreeze
+            || closedSession
             || angularVelocity <= -2
+            || angularVelocity >= 2
             || CACurrentMediaTime() < keepHotUntil
             || CACurrentMediaTime() - lastClosingTime < 0.5
     }
@@ -577,6 +601,7 @@ final class AppModel {
     }
 
     private func handleSleep() {
+        closedSession = true
         endFold(keepCapture: false)
         lastClosingTime = -.greatestFiniteMagnitude
         angularVelocity = 0
@@ -587,19 +612,38 @@ final class AppModel {
         lastClosingTime = -.greatestFiniteMagnitude
         angularVelocity = 0
         lastAngleSampleTime = 0
+        keepHotUntil = CACurrentMediaTime() + 2.5
+        if sensor.isAvailable {
+            sensor.poll()
+        }
         let angle = sensor.isAvailable ? sensor.angle : smoothedAngle
+        smoothedAngle = angle
+        motion.reset(to: angle)
+        lastAngleSample = angle
         peakAngle = max(peakAngle, angle)
         sawOpenPose = angle >= openAngle - 1
+        if angle < openAngle - 1 {
+            closedSession = true
+            ensureCaptureStarted()
+        } else {
+            closedSession = false
+        }
     }
 
     private func wantsFold(now: TimeInterval) -> Bool {
         if cannedProgress != nil { return true }
         let openingPastStart = angularVelocity >= 2 && smoothedAngle >= openAngle
-        if overlay.isVisible || captureEpoch != nil {
-            if openingPastStart { return false }
+        if openingPastStart {
+            closedSession = false
+            return false
+        }
+        if closedSession {
             return smoothedProgress > 0.012
         }
-        guard sawOpenPose, smoothedProgress > 0.012, !openingPastStart else { return false }
+        if overlay.isVisible || captureEpoch != nil {
+            return smoothedProgress > 0.012
+        }
+        guard sawOpenPose, smoothedProgress > 0.012 else { return false }
         return angularVelocity <= -1 || now - lastClosingTime < 2.4
     }
 

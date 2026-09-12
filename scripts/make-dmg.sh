@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 <App.app> <MacBookDuo-1.0.0.dmg>" >&2
+  echo "usage: $0 <App.app> <Linger-1.0.0.dmg>" >&2
   exit 1
 }
 
@@ -13,12 +13,12 @@ OUT="${2:-}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKGROUND="${ROOT}/packaging/dmg-background.png"
-VOLNAME="MacBook Duo"
-STAGE="$(mktemp -d "${TMPDIR:-/tmp}/macbookduo-dmg.XXXXXX")"
+VOLNAME="Linger"
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/linger-dmg.XXXXXX")"
 cleanup() { rm -rf "${STAGE}" "${OUT%.dmg}.rw.dmg"; }
 trap cleanup EXIT
 
-ditto "${APP}" "${STAGE}/MacBook Duo.app"
+ditto "${APP}" "${STAGE}/Linger.app"
 ln -s /Applications "${STAGE}/Applications"
 
 if command -v create-dmg >/dev/null 2>&1; then
@@ -27,8 +27,8 @@ if command -v create-dmg >/dev/null 2>&1; then
     --window-pos 200 120
     --window-size 800 500
     --icon-size 128
-    --icon "MacBook Duo.app" 200 250
-    --hide-extension "MacBook Duo.app"
+    --icon "Linger.app" 200 250
+    --hide-extension "Linger.app"
     --app-drop-link 600 250
     --no-internet-enable
     --overwrite

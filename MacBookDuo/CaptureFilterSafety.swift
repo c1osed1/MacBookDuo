@@ -1,7 +1,7 @@
 import AppKit
 import ScreenCaptureKit
 
-/// Resolves the applications a display capture must leave out so MacBook Duo
+/// Resolves the applications a display capture must leave out so Linger
 /// does not feed its own overlay back into the picture.
 enum CaptureFilterSafety {
     /// `nil` means the current process is not in the shareable-content list,

@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>MacBook Duo</string>
+	<string>Linger</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
 		<string>ru</string>
 	</array>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>MacBook Duo uses the built-in display to animate the lid fold. Capture stays on this Mac and stops when you quit.</string>
+	<string>Linger uses the built-in display to animate the lid fold. Capture stays on this Mac and stops when you quit.</string>
 </dict>
 </plist>

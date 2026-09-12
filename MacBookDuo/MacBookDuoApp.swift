@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private func installMainWindow() {
         let host = NSHostingController(rootView: MainWindowView(model: model))
         let window = NSWindow(contentViewController: host)
-        window.title = "MacBook Duo"
+        window.title = "Linger"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
@@ -124,14 +124,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         item.behavior = []
         item.isVisible = true
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "MacBook Duo")
+            button.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Linger")
             button.image?.isTemplate = true
             button.imagePosition = .imageOnly
-            button.toolTip = "MacBook Duo"
+            button.toolTip = "Linger"
         }
 
         let menu = NSMenu()
-        let title = NSMenuItem(title: "MacBook Duo", action: nil, keyEquivalent: "")
+        let title = NSMenuItem(title: "Linger", action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
         menu.addItem(.separator())
@@ -140,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.addItem(.separator())
         menu.addItem(menuItem(String(localized: "Enable lid effect"), action: #selector(toggleEnabled(_:))))
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: String(localized: "Quit MacBook Duo"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: String(localized: "Quit Linger"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
         item.menu = menu

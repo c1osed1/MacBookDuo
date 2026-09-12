@@ -186,8 +186,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacBookDuo/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "MacBook Duo";
-				INFOPLIST_KEY_CFBundleName = "MacBook Duo";
+				INFOPLIST_KEY_CFBundleDisplayName = Linger;
+				INFOPLIST_KEY_CFBundleName = Linger;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 qsoul";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -220,8 +220,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacBookDuo/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "MacBook Duo";
-				INFOPLIST_KEY_CFBundleName = "MacBook Duo";
+				INFOPLIST_KEY_CFBundleDisplayName = Linger;
+				INFOPLIST_KEY_CFBundleName = Linger;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 qsoul";
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -80,13 +80,13 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
           APP="DerivedData/Build/Products/Release/MacBookDuo.app"
           test -d "${APP}"
-          ./scripts/make-dmg.sh "${APP}" "MacBookDuo-${{ steps.meta.outputs.version }}.dmg"
+          ./scripts/make-dmg.sh "${APP}" "Linger-${{ steps.meta.outputs.version }}.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MacBookDuo.dmg
-          path: MacBookDuo-*.dmg
+          name: Linger.dmg
+          path: Linger-*.dmg
           if-no-files-found: error
 
   release:
@@ -97,7 +97,7 @@ jobs:
       - name: Download DMG
         uses: actions/download-artifact@v4
         with:
-          name: MacBookDuo.dmg
+          name: Linger.dmg
 
       - name: Publish GitHub Release
         env:
@@ -115,12 +115,12 @@ jobs:
 
           NOTES="$(printf '%s\n' "${COMMIT_MESSAGE:-}" | sed -E 's/\[RELEASE\][[:space:]]*v?[0-9.]*[[:space:]]*//' | sed '/^$/d')"
           if [[ -z "${NOTES}" ]]; then
-            NOTES="MacBook Duo ${VERSION}"
+            NOTES="Linger ${VERSION}"
           fi
 
           gh release create "${TAG}" \
             --repo "${GITHUB_REPOSITORY}" \
             --target "${TAG_SHA}" \
-            --title "MacBook Duo ${VERSION}" \
+            --title "Linger ${VERSION}" \
             --notes "${NOTES}" \
-            "MacBookDuo-${VERSION}.dmg"
+            "Linger-${VERSION}.dmg"

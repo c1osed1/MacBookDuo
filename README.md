@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="docs/icon.png" width="144" height="144" alt="MacBook Duo">
-  <h1>MacBook Duo</h1>
+  <img src="docs/icon.png" width="144" height="144" alt="Linger">
+  <h1>Linger</h1>
   <p>
     <strong>English</strong> · <a href="README.ru.md">Русский</a>
   </p>
@@ -34,7 +34,7 @@
   </table>
 </div>
 
-Close a MacBook and the picture usually just dies. MacBook Duo keeps it on a 3D pane that follows the lid — **Glass** freezes a frame, **Duo+** keeps the live desktop and folds it around the hinge, **Frost** pins that picture in the room and milks it as the lid sweeps through.
+Close a MacBook and the picture usually just dies. Linger keeps it on a 3D pane that follows the lid — **Glass** freezes a frame, **Duo+** keeps the live desktop and folds it around the hinge, **Frost** pins that picture in the room and milks it as the lid sweeps through.
 
 Opens like System Settings. Close the window and it leaves the Dock; the fold keeps running from the menu bar extra.
 
@@ -49,7 +49,7 @@ The UI follows the system language: English or Russian.
 Pick one in **Look**. Overlay stays on the built-in Liquid Retina display.
 
 <p align="center">
-  <img width="680" alt="MacBook Duo Look settings" src="docs/look.gif" />
+  <img width="680" alt="Linger Look settings" src="docs/look.gif" />
 </p>
 
 ## Use

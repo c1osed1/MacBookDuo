@@ -112,7 +112,7 @@ private struct GeneralPane: View {
         SettingsPane {
             Section {
                 SettingsHeader(
-                    title: "MacBook Duo",
+                    title: "Linger",
                     subtitle: String(localized: "Close the lid. The screen recedes in 3D — Glass, Duo+, or Frost, driven by the real hinge."),
                     appIcon: NSApp.applicationIconImage
                 )
@@ -155,7 +155,7 @@ private struct GeneralPane: View {
 
             if model.lastCaptureFailed {
                 Section {
-                    Text("Turn on Screen Recording for MacBook Duo in System Settings → Privacy & Security.")
+                    Text("Turn on Screen Recording for Linger in System Settings → Privacy & Security.")
                         .foregroundStyle(.secondary)
                     SettingsActionRow(
                         title: String(localized: "Open Screen Recording settings"),
@@ -175,7 +175,7 @@ private struct GeneralPane: View {
                         setLaunchAtLogin(enabled)
                     }
                 SettingsActionRow(
-                    title: String(localized: "Quit MacBook Duo"),
+                    title: String(localized: "Quit Linger"),
                     symbol: "power",
                     color: SettingsPalette.red,
                     subtitle: String(localized: "Stops capture so the recording indicator clears"),
@@ -186,7 +186,7 @@ private struct GeneralPane: View {
             } header: {
                 Text("App")
             } footer: {
-                Text("Close this window to leave the Dock. MacBook Duo stays in the menu bar and the lid fold keeps running.")
+                Text("Close this window to leave the Dock. Linger stays in the menu bar and the lid fold keeps running.")
             }
         }
         .onAppear {

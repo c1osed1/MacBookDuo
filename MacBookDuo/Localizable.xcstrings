@@ -36,9 +36,9 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закройте крышку. Экран уходит в 3D — Glass, Duo+ или Frost, по настоящему шарниру." } }
       }
     },
-    "Close this window to leave the Dock. MacBook Duo stays in the menu bar and the lid fold keeps running." : {
+    "Close this window to leave the Dock. Linger stays in the menu bar and the lid fold keeps running." : {
       "localizations" : {
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закройте окно — иконка уйдёт из Dock. MacBook Duo останется в меню-баре, складка крышки продолжит работать." } }
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закройте окно — иконка уйдёт из Dock. Linger останется в меню-баре, складка крышки продолжит работать." } }
       }
     },
     "Closed" : {
@@ -196,9 +196,9 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Превью на экране" } }
       }
     },
-    "Quit MacBook Duo" : {
+    "Quit Linger" : {
       "localizations" : {
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выйти из MacBook Duo" } }
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выйти из Linger" } }
       }
     },
     "Range" : {
@@ -261,9 +261,9 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Картинка стоит на фиксированной плоскости. Закройте крышку ниже угла старта — она искривится и размоется. Дрожание шарнира меньше 2° игнорируется." } }
       }
     },
-    "Turn on Screen Recording for MacBook Duo in System Settings → Privacy & Security." : {
+    "Turn on Screen Recording for Linger in System Settings → Privacy & Security." : {
       "localizations" : {
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Включите «Запись экрана» для MacBook Duo в Системных настройках → Конфиденциальность и безопасность." } }
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Включите «Запись экрана» для Linger в Системных настройках → Конфиденциальность и безопасность." } }
       }
     },
     "Wide open" : {

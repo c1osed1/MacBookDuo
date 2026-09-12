@@ -49,7 +49,9 @@ The UI follows the system language: English or Russian.
 Pick one in **Look**. Overlay stays on the built-in Liquid Retina display.
 
 <p align="center">
-  <img width="680" alt="Linger Look settings" src="docs/look.gif" />
+  <video src="docs/look-ui.mp4" width="680" autoplay loop muted playsinline>
+    <a href="docs/look-ui.mp4">Linger Look settings</a>
+  </video>
 </p>
 
 ## Use

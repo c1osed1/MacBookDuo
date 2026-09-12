@@ -74,6 +74,7 @@ struct PlusUniforms {
 
 struct FrostUniforms {
     var plane = SIMD4<Float>.zero
+    var optics = SIMD4<Float>.zero
 
     static let identity = FrostUniforms()
 }

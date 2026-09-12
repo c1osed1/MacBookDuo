@@ -349,8 +349,7 @@ private struct LookPreviewEffect: ViewModifier {
 
 }
 
-/// World-locked plane: the picture holds, then foreshortens and milks
-/// toward the far edge — same path as `duo_frost_fragment`.
+/// World-locked plane: the picture holds, then milks toward the far edge.
 private struct FrostLookPreview<Desktop: View>: View {
     let progress: CGFloat
     let size: CGSize
@@ -361,34 +360,28 @@ private struct FrostLookPreview<Desktop: View>: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.02, green: 0.035, blue: 0.05)
+            Color.black
             desktop()
             desktop()
-                .blur(radius: 6 * milk)
+                .blur(radius: 8 * milk)
                 .mask(frostMask(stops: [
                     .init(color: .clear, location: 0),
-                    .init(color: .black.opacity(0.35), location: 0.28),
-                    .init(color: .black, location: 0.72)
-                ]))
-            desktop()
-                .blur(radius: 18 * milk)
-                .mask(frostMask(stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: .clear, location: 0.22),
-                    .init(color: .black.opacity(0.55), location: 0.5),
-                    .init(color: .black, location: 0.82)
-                ]))
-            desktop()
-                .blur(radius: 36 * milk)
-                .mask(frostMask(stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: .clear, location: 0.4),
+                    .init(color: .black.opacity(0.28), location: 0.32),
                     .init(color: .black, location: 0.78)
+                ]))
+            desktop()
+                .blur(radius: 22 * milk)
+                .mask(frostMask(stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .clear, location: 0.24),
+                    .init(color: .black.opacity(0.5), location: 0.55),
+                    .init(color: .black, location: 0.88)
                 ]))
             LinearGradient(
                 colors: [
                     .clear,
-                    Color(red: 0.02, green: 0.035, blue: 0.05).opacity(0.45 * milk)
+                    .white.opacity(0.04 * milk),
+                    Color.black.opacity(0.22 * milk)
                 ],
                 startPoint: .bottom,
                 endPoint: .top

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Frost keeps the far edge milky instead of punching a black hole. Blur is a continuous Gaussian, with a little hinge chroma.
+
 ## 1.5.0 — 2026-09-12
 
 The app is Linger. Same hinge, same looks. The GitHub repo URL is unchanged.

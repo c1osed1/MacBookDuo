@@ -59,49 +59,44 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
             let pointSize = bounds.size
             let scale = Double(drawableSize.width) / max(Double(pointSize.width), 1)
             if foldMode == .frost {
-                engine.prepareFrost(from: source, commandBuffer: commandBuffer)
-            } else {
-                engine.preparePlus(from: source, commandBuffer: commandBuffer, drawableSize: drawableSize)
-            }
-            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+                engine.encodeFrost(
+                    source: source,
+                    commandBuffer: commandBuffer,
+                    drawable: descriptor,
+                    size: drawableSize,
+                    uniforms: FrostUniforms(
+                        plane: SIMD4(
+                            Float((openAngle - Double(uniforms.angle)) * .pi / 180),
+                            Float(drawableSize.width / max(drawableSize.height, 1)),
+                            1,
+                            2
+                        ),
+                        optics: SIMD4(1, 1, 0, 0)
+                    )
+                )
+                commandBuffer.present(drawable)
                 commandBuffer.commit()
                 return
             }
-            if foldMode == .frost {
-                var frostUniforms = FrostUniforms(
-                    plane: SIMD4(
-                        Float((openAngle - Double(uniforms.angle)) * .pi / 180),
-                        Float(drawableSize.width / max(drawableSize.height, 1)),
-                        1,
-                        2
-                    )
-                )
-                encoder.setRenderPipelineState(engine.frostPipeline)
-                encoder.setFragmentBytes(&frostUniforms, length: MemoryLayout<FrostUniforms>.stride, index: 0)
-                encoder.setFragmentTexture(source, index: 0)
-                for index in 0..<4 {
-                    encoder.setFragmentTexture(engine.frostLevel(index) ?? source, index: index + 1)
-                }
-                encoder.setFragmentSamplerState(engine.sampler, index: 0)
-            } else {
-                guard let plus = engine.plusTexture else {
-                    encoder.endEncoding()
-                    commandBuffer.commit()
-                    return
-                }
-                var plusUniforms = DuoPlusGeometry.plusUniforms(
-                    startAngle: openAngle,
-                    currentAngle: Double(uniforms.angle),
-                    progress: Double(uniforms.progress),
-                    look: plusLook,
-                    screenSize: pointSize,
-                    pixelScale: scale
-                )
-                encoder.setRenderPipelineState(engine.plusPipeline)
-                encoder.setFragmentBytes(&plusUniforms, length: MemoryLayout<PlusUniforms>.stride, index: 0)
-                encoder.setFragmentTexture(plus, index: 0)
-                encoder.setFragmentSamplerState(engine.mipSampler, index: 0)
+
+            engine.preparePlus(from: source, commandBuffer: commandBuffer, drawableSize: drawableSize)
+            guard let plus = engine.plusTexture,
+                  let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+                commandBuffer.commit()
+                return
             }
+            var plusUniforms = DuoPlusGeometry.plusUniforms(
+                startAngle: openAngle,
+                currentAngle: Double(uniforms.angle),
+                progress: Double(uniforms.progress),
+                look: plusLook,
+                screenSize: pointSize,
+                pixelScale: scale
+            )
+            encoder.setRenderPipelineState(engine.plusPipeline)
+            encoder.setFragmentBytes(&plusUniforms, length: MemoryLayout<PlusUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(plus, index: 0)
+            encoder.setFragmentSamplerState(engine.mipSampler, index: 0)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             encoder.endEncoding()
         } else {

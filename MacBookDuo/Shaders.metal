@@ -202,45 +202,111 @@ fragment float4 duo_plus_fragment(VertexOut in [[stage_in]],
 
 struct FrostUniforms {
     float4 plane;
+    float4 optics;
 };
+
+float frostOptical(float angle) {
+    return smoothstep(0.0, 0.02, abs(angle));
+}
+
+float frostHinge(float2 uv) {
+    return saturate(1.0 - uv.y);
+}
+
+float frostScatter(float hinge, float angle, float strength) {
+    float contact = smoothstep(0.045, 0.26, hinge);
+    float gap = hinge * abs(sin(angle));
+    float scatter = gap * contact * frostOptical(angle) * strength * 24.0;
+    return scatter * rsqrt(1.0 + scatter * scatter * 0.0014);
+}
+
+float2 frostProjectUV(float2 uv, constant FrostUniforms &u) {
+    float hinge = frostHinge(uv);
+    float angle = clamp(u.plane.x, -0.65, 1.25);
+    if (abs(angle) < 0.002 || u.plane.w < 0.5) {
+        return uv;
+    }
+    float3 eye = float3(0.0, 0.65, 1.6);
+    float3 glass = float3((uv.x - 0.5) * u.plane.y, hinge * cos(angle), hinge * sin(angle));
+    float t = u.plane.w > 1.5 ? eye.z / max(0.25, eye.z - glass.z) : 1.0;
+    float3 hit = eye + t * (glass - eye);
+    return float2(hit.x / max(u.plane.y, 1e-4) + 0.5, 1.0 - hit.y);
+}
+
+fragment float4 duo_frost_project(VertexOut in [[stage_in]],
+                                 constant FrostUniforms &u [[buffer(0)]],
+                                 texture2d<float> picture [[texture(0)]],
+                                 sampler samp [[sampler(0)]]) {
+    float2 mapped = frostProjectUV(in.uv, u);
+    float2 feather = max(fwidth(mapped), float2(0.002));
+    float cover =
+        smoothstep(-feather.x, feather.x, mapped.x) *
+        smoothstep(-feather.x, feather.x, 1.0 - mapped.x) *
+        smoothstep(-feather.y, feather.y, mapped.y) *
+        smoothstep(-feather.y, feather.y, 1.0 - mapped.y);
+    if (cover <= 0.0) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+    return float4(picture.sample(samp, saturate(mapped)).rgb * cover, 1.0);
+}
+
+fragment float4 duo_frost_blur(VertexOut in [[stage_in]],
+                              constant FrostUniforms &u [[buffer(0)]],
+                              texture2d<float> picture [[texture(0)]],
+                              sampler samp [[sampler(0)]]) {
+    float2 uv = in.uv;
+    float radius = frostScatter(frostHinge(uv), u.plane.x, u.plane.z);
+    if (radius < 0.4) {
+        return picture.sample(samp, uv);
+    }
+
+    float2 texel = u.optics.zw / max(float2(picture.get_width(), picture.get_height()), float2(1.0));
+    float sigma = max(radius * 0.42, 0.2);
+    float inv = 0.5 / (sigma * sigma);
+    float3 sum = picture.sample(samp, uv).rgb;
+    float weightSum = 1.0;
+    for (int i = 1; i <= 24; i += 2) {
+        float first = float(i);
+        float second = first + 1.0;
+        float w1 = exp(-first * first * inv);
+        float w2 = exp(-second * second * inv);
+        float weight = w1 + w2;
+        if (weight < 1e-6) {
+            continue;
+        }
+        float offset = (first * w1 + second * w2) / weight;
+        sum += picture.sample(samp, uv + texel * offset).rgb * weight;
+        sum += picture.sample(samp, uv - texel * offset).rgb * weight;
+        weightSum += 2.0 * weight;
+    }
+    return float4(sum / weightSum, 1.0);
+}
 
 fragment float4 duo_frost_fragment(VertexOut in [[stage_in]],
                                   constant FrostUniforms &u [[buffer(0)]],
                                   texture2d<float> picture [[texture(0)]],
-                                  texture2d<float> blur0 [[texture(1)]],
-                                  texture2d<float> blur1 [[texture(2)]],
-                                  texture2d<float> blur2 [[texture(3)]],
-                                  texture2d<float> blur3 [[texture(4)]],
                                   sampler samp [[sampler(0)]]) {
     float2 uv = in.uv;
-    float height = 1.0 - uv.y;
-    float a = clamp(u.plane.x, -0.65, 1.25);
-    float depth = height * sin(a);
-    if (u.plane.w > 0.5) {
-        float3 eye = float3(0.0, 0.65, 1.6);
-        float3 physical = float3((uv.x - 0.5) * u.plane.y, height * cos(a), depth);
-        float t = u.plane.w > 1.5 ? eye.z / max(0.25, eye.z - physical.z) : 1.0;
-        float3 hit = eye + t * (physical - eye);
-        uv = float2(hit.x / u.plane.y + 0.5, 1.0 - hit.y);
+    float angle = clamp(u.plane.x, -0.65, 1.25);
+    if (abs(angle) < 0.002) {
+        return picture.sample(samp, uv);
     }
 
-    float radius = u.plane.z * smoothstep(0.08, 1.0, height) * abs(sin(a)) * 65.0;
-    float3 color;
-    if (radius < 2.0) {
-        color = mix(picture.sample(samp, uv).rgb, blur0.sample(samp, uv).rgb, radius / 2.0);
-    } else if (radius < 6.0) {
-        color = mix(blur0.sample(samp, uv).rgb, blur1.sample(samp, uv).rgb, (radius - 2.0) / 4.0);
-    } else if (radius < 16.0) {
-        color = mix(blur1.sample(samp, uv).rgb, blur2.sample(samp, uv).rgb, (radius - 6.0) / 10.0);
-    } else {
-        color = mix(blur2.sample(samp, uv).rgb, blur3.sample(samp, uv).rgb, clamp((radius - 16.0) / 24.0, 0.0, 1.0));
-    }
+    float hinge = frostHinge(uv);
+    float contact = smoothstep(0.045, 0.26, hinge);
+    float optical = frostOptical(angle);
+    float2 radial = float2((uv.x - 0.5) * 0.72, -hinge);
+    float2 dir = radial / max(length(radial), 1e-4);
+    float split = hinge * contact * optical * abs(sin(angle)) * 0.0054 * u.optics.y;
+    float3 color = float3(
+        picture.sample(samp, uv + dir * split).r,
+        picture.sample(samp, uv).g,
+        picture.sample(samp, uv - dir * split).b
+    );
 
-    float2 sourceSize = float2(picture.get_width(), picture.get_height());
-    float sigmaPixels = radius * sourceSize.y / 1000.0;
-    float2 feather = max(3.0 * sigmaPixels / sourceSize, fwidth(uv));
-    float2 coverage = smoothstep(-feather, feather, uv)
-        * (1.0 - smoothstep(1.0 - feather, 1.0 + feather, uv));
-    float mask = coverage.x * coverage.y;
-    return float4(mix(float3(0.02, 0.035, 0.05), color, mask), 1.0);
+    float closed = saturate(abs(angle) / 1.15);
+    float veil = 1.0 - min(0.50 * u.optics.x, 0.52)
+        * smoothstep(0.20, 1.0, closed)
+        * smoothstep(0.12, 0.92, hinge);
+    return float4(color * veil, 1.0);
 }

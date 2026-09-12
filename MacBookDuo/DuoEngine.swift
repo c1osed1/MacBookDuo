@@ -9,6 +9,8 @@ final class DuoEngine {
     let commandQueue: MTLCommandQueue
     let pipeline: MTLRenderPipelineState
     let plusPipeline: MTLRenderPipelineState
+    let frostProjectPipeline: MTLRenderPipelineState
+    let frostBlurPipeline: MTLRenderPipelineState
     let frostPipeline: MTLRenderPipelineState
     let kawasePipeline: MTLRenderPipelineState
     let sampler: MTLSamplerState
@@ -22,13 +24,11 @@ final class DuoEngine {
     private var kawaseA: MTLTexture?
     private var kawaseB: MTLTexture?
     private(set) var plusTexture: MTLTexture?
-    private var frostLevels: [MTLTexture] = []
-    private var frostFilters: [MPSImageGaussianBlur] = []
+    private var frostSharp: MTLTexture?
+    private var frostBlur: MTLTexture?
     private lazy var plusScaler = MPSImageBilinearScale(device: device)
     private(set) var sourceGeneration: UInt64 = 0
     private var plusGeneration: UInt64 = .max
-    private var frostGeneration: UInt64 = .max
-    private static let frostSigmas: [Float] = [2, 6, 16, 40]
 
     var displayTexture: MTLTexture? { sourceTexture }
 
@@ -44,6 +44,8 @@ final class DuoEngine {
               let vertex = library.makeFunction(name: "duo_vertex"),
               let fragment = library.makeFunction(name: "duo_fragment"),
               let plus = library.makeFunction(name: "duo_plus_fragment"),
+              let frostProject = library.makeFunction(name: "duo_frost_project"),
+              let frostBlur = library.makeFunction(name: "duo_frost_blur"),
               let frost = library.makeFunction(name: "duo_frost_fragment"),
               let kawase = library.makeFunction(name: "duo_kawase") else {
             fatalError("Missing Metal functions")
@@ -51,6 +53,8 @@ final class DuoEngine {
 
         pipeline = Self.makePipeline(device: device, vertex: vertex, fragment: fragment)
         plusPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: plus)
+        frostProjectPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: frostProject)
+        frostBlurPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: frostBlur)
         frostPipeline = Self.makePipeline(device: device, vertex: vertex, fragment: frost)
         kawasePipeline = Self.makePipeline(device: device, vertex: vertex, fragment: kawase)
 
@@ -120,7 +124,6 @@ final class DuoEngine {
         sourceTexture = nil
         blurTexture = nil
         plusTexture = nil
-        frostGeneration = .max
         hasSource = false
         plusGeneration = .max
     }
@@ -171,38 +174,82 @@ final class DuoEngine {
         plusTexture = target
     }
 
-    func prepareFrost(from source: MTLTexture, commandBuffer: MTLCommandBuffer) {
-        let width = source.width
-        let height = source.height
-        if frostLevels.first?.width != width || frostLevels.first?.height != height {
-            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .rgba16Float,
-                width: width,
-                height: height,
-                mipmapped: false
-            )
-            descriptor.usage = [.shaderRead, .shaderWrite]
-            descriptor.storageMode = .private
-            frostLevels = (0..<Self.frostSigmas.count).compactMap { _ in
-                device.makeTexture(descriptor: descriptor)
-            }
-            let scale = Float(max(height, 1)) / 1000
-            frostFilters = Self.frostSigmas.map { sigma in
-                let filter = MPSImageGaussianBlur(device: device, sigma: max(sigma * scale, 0.8))
-                filter.edgeMode = .clamp
-                return filter
-            }
-            frostGeneration = .max
-        }
-        guard sourceGeneration != frostGeneration else { return }
-        frostGeneration = sourceGeneration
-        for (filter, destination) in zip(frostFilters, frostLevels) {
-            filter.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
-        }
+    func encodeFrost(
+        source: MTLTexture,
+        commandBuffer: MTLCommandBuffer,
+        drawable: MTLRenderPassDescriptor,
+        size: CGSize,
+        uniforms: FrostUniforms
+    ) {
+        let width = max(Int(size.width.rounded()), 1)
+        let height = max(Int(size.height.rounded()), 1)
+        ensureFrostTargets(width: width, height: height)
+        guard let sharp = frostSharp, let blur = frostBlur else { return }
+
+        var uniforms = uniforms
+        encodeFrostPass(
+            commandBuffer: commandBuffer,
+            pipeline: frostProjectPipeline,
+            source: source,
+            destination: sharp,
+            uniforms: &uniforms
+        )
+
+        uniforms.optics.z = 1
+        uniforms.optics.w = 0
+        encodeFrostPass(
+            commandBuffer: commandBuffer,
+            pipeline: frostBlurPipeline,
+            source: sharp,
+            destination: blur,
+            uniforms: &uniforms
+        )
+
+        uniforms.optics.z = 0
+        uniforms.optics.w = 1
+        encodeFrostPass(
+            commandBuffer: commandBuffer,
+            pipeline: frostBlurPipeline,
+            source: blur,
+            destination: sharp,
+            uniforms: &uniforms
+        )
+
+        uniforms.optics.z = 0
+        uniforms.optics.w = 0
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: drawable) else { return }
+        encoder.setRenderPipelineState(frostPipeline)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FrostUniforms>.stride, index: 0)
+        encoder.setFragmentTexture(sharp, index: 0)
+        encoder.setFragmentSamplerState(sampler, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        encoder.endEncoding()
     }
 
-    func frostLevel(_ index: Int) -> MTLTexture? {
-        frostLevels.indices.contains(index) ? frostLevels[index] : nil
+    private func ensureFrostTargets(width: Int, height: Int) {
+        guard frostSharp?.width != width || frostSharp?.height != height else { return }
+        frostSharp = makeTarget(width: width, height: height)
+        frostBlur = makeTarget(width: width, height: height)
+    }
+
+    private func encodeFrostPass(
+        commandBuffer: MTLCommandBuffer,
+        pipeline: MTLRenderPipelineState,
+        source: MTLTexture,
+        destination: MTLTexture,
+        uniforms: inout FrostUniforms
+    ) {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = destination
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FrostUniforms>.stride, index: 0)
+        encoder.setFragmentTexture(source, index: 0)
+        encoder.setFragmentSamplerState(sampler, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        encoder.endEncoding()
     }
 
     private func rebuildBlur(from source: MTLTexture) {

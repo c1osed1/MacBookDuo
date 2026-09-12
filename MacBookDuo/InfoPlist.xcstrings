@@ -1,0 +1,23 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSScreenCaptureUsageDescription" : {
+      "comment" : "Screen Recording permission prompt",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MacBook Duo uses the built-in display to animate the lid fold. Capture stays on this Mac and stops when you quit."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MacBook Duo берёт встроенный экран, чтобы анимировать складку крышки. Захват остаётся на этом Mac и останавливается при выходе."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

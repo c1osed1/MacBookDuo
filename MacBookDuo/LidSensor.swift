@@ -8,7 +8,7 @@ final class LidSensor {
     private(set) var angle: Double = 110
     private(set) var velocity: Double = 0
     private(set) var isAvailable = false
-    private(set) var status = "Sensor not available"
+    private(set) var status = String(localized: "Sensor not available")
 
     nonisolated(unsafe) private var device: IOHIDDevice?
     nonisolated(unsafe) private var deviceOpen = false
@@ -23,9 +23,9 @@ final class LidSensor {
         if let found = Self.findDevice() {
             device = found
             isAvailable = true
-            status = "Sensor ready"
+            status = String(localized: "Sensor ready")
         } else {
-            status = "Lid sensor not found"
+            status = String(localized: "Lid sensor not found")
         }
     }
 
@@ -38,7 +38,7 @@ final class LidSensor {
     func start() {
         guard isAvailable, !deviceOpen, let device else { return }
         guard IOHIDDeviceOpen(device, Self.options) == kIOReturnSuccess else {
-            status = "Could not open lid sensor"
+            status = String(localized: "Could not open lid sensor")
             isAvailable = false
             return
         }
@@ -89,29 +89,13 @@ final class LidSensor {
         status = Self.label(for: raw)
     }
 
-    func coastVelocity(at now: TimeInterval) -> Double {
-        let age = now - lastTime
-        if abs(velocity) < 0.35 { return 0 }
-        if age <= 0.2 { return velocity }
-        let decayed = velocity * exp(-(age - 0.2) * 12)
-        return abs(decayed) < 0.4 ? 0 : decayed
-    }
-
-    /// Where the lid is now, filling the gaps between sparse HID samples.
-    func predictedAngle(at now: TimeInterval) -> Double {
-        let v = coastVelocity(at: now)
-        guard abs(v) > 0.35 else { return angle }
-        let predicted = angle + v * min(max(now - lastTime, 0), 0.16)
-        return min(max(predicted, 0), 180)
-    }
-
     private static func label(for angle: Double) -> String {
         switch angle {
-        case ..<8: "Closed"
-        case ..<40: "Barely open"
-        case ..<80: "Halfway"
-        case ..<115: "Laptop"
-        default: "Wide open"
+        case ..<8: String(localized: "Closed")
+        case ..<40: String(localized: "Barely open")
+        case ..<80: String(localized: "Halfway")
+        case ..<115: String(localized: "Laptop")
+        default: String(localized: "Wide open")
         }
     }
 
@@ -164,5 +148,22 @@ final class LidSensor {
         }
         guard let chosen = builtinMatch ?? otherMatch else { return nil }
         return Unmanaged.passRetained(chosen).takeRetainedValue()
+    }
+}
+
+/// Dead band from the last accepted hinge sample.
+struct LidMotionFilter {
+    private(set) var angle: Double?
+
+    mutating func reset(to sample: Double) {
+        angle = sample
+    }
+
+    mutating func update(_ sample: Double, tolerance: Double) -> Double {
+        guard sample.isFinite else { return angle ?? 0 }
+        if angle == nil || abs(sample - angle!) > max(0, tolerance) {
+            angle = sample
+        }
+        return angle!
     }
 }

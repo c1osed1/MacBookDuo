@@ -135,12 +135,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         title.isEnabled = false
         menu.addItem(title)
         menu.addItem(.separator())
-        menu.addItem(menuItem("Settings…", action: #selector(showMainWindow), key: ","))
-        menu.addItem(menuItem("Preview", action: #selector(preview(_:))))
+        menu.addItem(menuItem(String(localized: "Settings…"), action: #selector(showMainWindow), key: ","))
+        menu.addItem(menuItem(String(localized: "Preview"), action: #selector(preview(_:))))
         menu.addItem(.separator())
-        menu.addItem(menuItem("Enable lid effect", action: #selector(toggleEnabled(_:))))
+        menu.addItem(menuItem(String(localized: "Enable lid effect"), action: #selector(toggleEnabled(_:))))
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit MacBook Duo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: String(localized: "Quit MacBook Duo"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
         item.menu = menu

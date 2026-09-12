@@ -40,11 +40,11 @@ enum FoldMode: String, CaseIterable, Identifiable {
     var caption: String {
         switch self {
         case .glass:
-            "Freeze one frame, then recede."
+            String(localized: "Freeze one frame, then recede.")
         case .duoPlus:
-            "Live desktop, warped around the hinge."
+            String(localized: "Live desktop, warped around the hinge.")
         case .frost:
-            "Picture stays in the room. The lid milks through it."
+            String(localized: "Fixed plane: the picture holds its angle while the lid closes.")
         }
     }
 }
@@ -70,4 +70,10 @@ struct PlusUniforms {
     var light = SIMD4<Float>.zero
 
     static let identity = PlusUniforms()
+}
+
+struct FrostUniforms {
+    var plane = SIMD4<Float>.zero
+
+    static let identity = FrostUniforms()
 }

@@ -2,6 +2,9 @@
   <img src="docs/icon.png" width="144" height="144" alt="MacBook Duo">
   <h1>MacBook Duo</h1>
   <p>
+    <strong>English</strong> · <a href="README.ru.md">Русский</a>
+  </p>
+  <p>
     <a href="https://github.com/c1osed1/MacBookDuo/releases"><img src="https://img.shields.io/github/v/release/c1osed1/MacBookDuo?include_prereleases&label=download" alt="Download"></a>
     <a href="https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml"><img src="https://github.com/c1osed1/MacBookDuo/actions/workflows/ci.yml/badge.svg" alt="Build"></a>
   </p>
@@ -35,6 +38,8 @@ Close a MacBook and the picture usually just dies. MacBook Duo keeps it on a 3D 
 
 Opens like System Settings. Close the window and it leaves the Dock; the fold keeps running from the menu bar extra.
 
+The UI follows the system language: English or Russian.
+
 ## Three looks
 
 - **Glass** — one frozen frame, then a receding pane.
@@ -44,7 +49,7 @@ Opens like System Settings. Close the window and it leaves the Dock; the fold ke
 Pick one in **Look**. Overlay stays on the built-in Liquid Retina display.
 
 <p align="center">
-  <img width="280" alt="MacBook Duo settings" src="https://github.com/user-attachments/assets/6dae323b-7ccd-4a2d-9b4b-6069d701d27b" />
+  <img width="680" alt="MacBook Duo Look settings" src="docs/look.gif" />
 </p>
 
 ## Use

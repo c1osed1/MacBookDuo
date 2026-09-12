@@ -1,0 +1,296 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "App" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Приложение" } }
+      }
+    },
+    "Barely open" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Чуть открыта" } }
+      }
+    },
+    "Begins at %.0f°" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Начинается с %.0f°" } }
+      }
+    },
+    "Blur" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Размытие" } }
+      }
+    },
+    "Blur radius at the far edge." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Радиус размытия на дальнем крае." } }
+      }
+    },
+    "Blur spread" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ширина размытия" } }
+      }
+    },
+    "Close the lid. The screen recedes in 3D — Glass, Duo+, or Frost, driven by the real hinge." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закройте крышку. Экран уходит в 3D — Glass, Duo+ или Frost, по настоящему шарниру." } }
+      }
+    },
+    "Close this window to leave the Dock. MacBook Duo stays in the menu bar and the lid fold keeps running." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закройте окно — иконка уйдёт из Dock. MacBook Duo останется в меню-баре, складка крышки продолжит работать." } }
+      }
+    },
+    "Closed" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закрыта" } }
+      }
+    },
+    "Could not open lid sensor" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Не удалось открыть датчик крышки" } }
+      }
+    },
+    "Demo angle" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Демо-угол" } }
+      }
+    },
+    "Depth" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Глубина" } }
+      }
+    },
+    "Dimming" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Затемнение" } }
+      }
+    },
+    "Dimming spread" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ширина затемнения" } }
+      }
+    },
+    "Done at %.0f°" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Готово при %.0f°" } }
+      }
+    },
+    "Drive the built-in display from this slider" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Управлять встроенным экраном этим ползунком" } }
+      }
+    },
+    "Enable lid effect" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Эффект крышки" } }
+      }
+    },
+    "Fixed plane: the picture holds its angle while the lid closes." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Фиксированная плоскость: картинка держит угол, пока крышка закрывается." } }
+      }
+    },
+    "Fold" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Складка" } }
+      }
+    },
+    "Freeze one frame, then recede." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Заморозить кадр и увести назад." } }
+      }
+    },
+    "Fully folded" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Полностью сложено" } }
+      }
+    },
+    "General" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Основные" } }
+      }
+    },
+    "Halfway" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Наполовину" } }
+      }
+    },
+    "How far the glass recedes as the lid closes." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Насколько стекло уезжает при закрытии крышки." } }
+      }
+    },
+    "Laptop" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ноутбук" } }
+      }
+    },
+    "Launch at login" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Открывать при входе" } }
+      }
+    },
+    "Lean back" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Наклон назад" } }
+      }
+    },
+    "Lid" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Крышка" } }
+      }
+    },
+    "Lid sensor not found" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Датчик крышки не найден" } }
+      }
+    },
+    "Live angle" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Живой угол" } }
+      }
+    },
+    "Live desktop, warped around the hinge." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Живой стол, гнётся вокруг петли." } }
+      }
+    },
+    "Look" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вид" } }
+      }
+    },
+    "Now" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сейчас" } }
+      }
+    },
+    "Open Screen Recording settings" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Открыть настройки записи экрана" } }
+      }
+    },
+    "Permission" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Доступ" } }
+      }
+    },
+    "Perspective" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Перспектива" } }
+      }
+    },
+    "Play a canned open / close" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Проигрывает закрытие и открытие" } }
+      }
+    },
+    "Preview" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Превью" } }
+      }
+    },
+    "Preview on screen" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Превью на экране" } }
+      }
+    },
+    "Quit MacBook Duo" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выйти из MacBook Duo" } }
+      }
+    },
+    "Range" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Диапазон" } }
+      }
+    },
+    "Reset look" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сбросить вид" } }
+      }
+    },
+    "Search" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Поиск" } }
+      }
+    },
+    "Sensor" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Датчик" } }
+      }
+    },
+    "Sensor not available" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Датчик недоступен" } }
+      }
+    },
+    "Sensor ready" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Датчик готов" } }
+      }
+    },
+    "Settings…" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Настройки…" } }
+      }
+    },
+    "Start fold" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Начало складки" } }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Состояние" } }
+      }
+    },
+    "Stops capture so the recording indicator clears" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Останавливает захват, чтобы индикатор записи пропал" } }
+      }
+    },
+    "Studio" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Студия" } }
+      }
+    },
+    "The picture stays on a fixed plane. Close the lid below the Lid start angle to warp and blur it. Hinge jitter under 2° is ignored." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Картинка стоит на фиксированной плоскости. Закройте крышку ниже угла старта — она искривится и размоется. Дрожание шарнира меньше 2° игнорируется." } }
+      }
+    },
+    "Turn on Screen Recording for MacBook Duo in System Settings → Privacy & Security." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Включите «Запись экрана» для MacBook Duo в Системных настройках → Конфиденциальность и безопасность." } }
+      }
+    },
+    "Wide open" : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Широко открыта" } }
+      }
+    },
+    "0 blurs the far edge only, 100 the whole picture." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "0 — только дальний край, 100 — вся картинка." } }
+      }
+    },
+    "0 keeps the sides parallel, 100 converges sharply." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "0 — бока параллельны, 100 — сильно сходятся." } }
+      }
+    },
+    "1 holds the picture still in the room. Lower follows the lid." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "1 — картинка стоит в комнате. Меньше — следует за крышкой." } }
+      }
+    },
+    "%lld° is a normal laptop pose. Drag toward %lld° to fold, or close the real lid." : {
+      "localizations" : {
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "%lld° — обычная поза ноутбука. Тяните к %lld°, чтобы сложить, или закройте настоящую крышку." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

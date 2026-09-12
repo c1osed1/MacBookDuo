@@ -81,9 +81,9 @@ private enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .general: "General"
-        case .look: "Look"
-        case .lid: "Lid"
+        case .general: String(localized: "General")
+        case .look: String(localized: "Look")
+        case .lid: String(localized: "Lid")
         }
     }
 
@@ -113,7 +113,7 @@ private struct GeneralPane: View {
             Section {
                 SettingsHeader(
                     title: "MacBook Duo",
-                    subtitle: "Close the lid. The screen recedes in 3D — Glass, Duo+, or Frost, driven by the real hinge.",
+                    subtitle: String(localized: "Close the lid. The screen recedes in 3D — Glass, Duo+, or Frost, driven by the real hinge."),
                     appIcon: NSApp.applicationIconImage
                 )
             }
@@ -121,10 +121,10 @@ private struct GeneralPane: View {
             Section {
                 Toggle("Enable lid effect", isOn: $model.enabled)
                 SettingsActionRow(
-                    title: "Preview on screen",
+                    title: String(localized: "Preview on screen"),
                     symbol: "play.fill",
                     color: SettingsPalette.green,
-                    subtitle: "Play a canned open / close"
+                    subtitle: String(localized: "Play a canned open / close")
                 ) {
                     model.playCannedDemo()
                 }
@@ -132,19 +132,19 @@ private struct GeneralPane: View {
 
             Section {
                 SettingsValueRow(
-                    title: "Look",
+                    title: String(localized: "Look"),
                     symbol: "cube.transparent",
                     color: SettingsPalette.blue,
                     value: model.foldMode.title
                 )
                 SettingsValueRow(
-                    title: "Lid",
+                    title: String(localized: "Lid"),
                     symbol: "angle",
                     color: SettingsPalette.indigo,
                     value: String(format: "%.1f°", model.angle)
                 )
                 SettingsValueRow(
-                    title: "Sensor",
+                    title: String(localized: "Sensor"),
                     symbol: "sensor.tag.radiowaves.forward",
                     color: SettingsPalette.teal,
                     value: model.sensorStatus
@@ -158,7 +158,7 @@ private struct GeneralPane: View {
                     Text("Turn on Screen Recording for MacBook Duo in System Settings → Privacy & Security.")
                         .foregroundStyle(.secondary)
                     SettingsActionRow(
-                        title: "Open Screen Recording settings",
+                        title: String(localized: "Open Screen Recording settings"),
                         symbol: "gear",
                         color: SettingsPalette.orange
                     ) {
@@ -175,10 +175,10 @@ private struct GeneralPane: View {
                         setLaunchAtLogin(enabled)
                     }
                 SettingsActionRow(
-                    title: "Quit MacBook Duo",
+                    title: String(localized: "Quit MacBook Duo"),
                     symbol: "power",
                     color: SettingsPalette.red,
-                    subtitle: "Stops capture so the recording indicator clears",
+                    subtitle: String(localized: "Stops capture so the recording indicator clears"),
                     isDestructive: true
                 ) {
                     NSApp.terminate(nil)
@@ -220,16 +220,8 @@ private struct LookPane: View {
     var body: some View {
         SettingsPane {
             Section {
-                Picker("Look", selection: $model.foldMode) {
-                    ForEach(FoldMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                .pickerStyle(.radioGroup)
-                Text(model.foldMode.caption)
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("Look")
+                LookGallery(foldMode: $model.foldMode)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 14, bottom: 14, trailing: 14))
             }
 
             if model.foldMode == .glass {
@@ -283,23 +275,8 @@ private struct LookPane: View {
 
             if model.foldMode == .frost {
                 Section {
-                    Slider(value: $model.maxBlurRadius, in: 10...160) {
-                        Text("Blur")
-                    } minimumValueLabel: {
-                        Text("10")
-                    } maximumValueLabel: {
-                        Text("160")
-                    }
-                    Text("How milky the far edge gets as the lid closes.")
+                    Text("The picture stays on a fixed plane. Close the lid below the Lid start angle to warp and blur it. Hinge jitter under 2° is ignored.")
                         .foregroundStyle(.secondary)
-                    Slider(value: $model.blurEvenness, in: 0...1) {
-                        Text("Frost spread")
-                    }
-                    Text("0 frosts the far edge only, 100 the whole picture.")
-                        .foregroundStyle(.secondary)
-                    Slider(value: $model.maxDim, in: 0...1) {
-                        Text("Dimming")
-                    }
                 } header: {
                     Text("Frost")
                 }
@@ -307,7 +284,7 @@ private struct LookPane: View {
 
             Section {
                 SettingsActionRow(
-                    title: "Reset look",
+                    title: String(localized: "Reset look"),
                     symbol: "arrow.counterclockwise",
                     color: SettingsPalette.gray
                 ) {
@@ -325,19 +302,19 @@ private struct LidPane: View {
         SettingsPane {
             Section {
                 SettingsValueRow(
-                    title: "Live angle",
+                    title: String(localized: "Live angle"),
                     symbol: "angle",
                     color: SettingsPalette.indigo,
                     value: String(format: "%.1f°", model.angle)
                 )
                 SettingsValueRow(
-                    title: "Fold",
+                    title: String(localized: "Fold"),
                     symbol: "rectangle.split.2x1",
                     color: SettingsPalette.blue,
                     value: String(format: "%.0f%%", model.progress * 100)
                 )
                 SettingsValueRow(
-                    title: "Sensor",
+                    title: String(localized: "Sensor"),
                     symbol: "sensor.tag.radiowaves.forward",
                     color: SettingsPalette.teal,
                     value: model.sensorStatus
@@ -350,12 +327,12 @@ private struct LidPane: View {
                 Slider(value: $model.openAngle, in: 50...160) {
                     Text("Start fold")
                 }
-                Text(String(format: "Begins at %.0f°", model.openAngle))
+                Text(String(format: String(localized: "Begins at %.0f°"), model.openAngle))
                     .foregroundStyle(.secondary)
                 Slider(value: $model.closedAngle, in: 5...50) {
                     Text("Fully folded")
                 }
-                Text(String(format: "Done at %.0f°", model.closedAngle))
+                Text(String(format: String(localized: "Done at %.0f°"), model.closedAngle))
                     .foregroundStyle(.secondary)
             } header: {
                 Text("Range")
@@ -366,7 +343,7 @@ private struct LidPane: View {
                 Slider(value: $model.demoAngle, in: 10...140) {
                     Text("Demo angle")
                 }
-                Text("\(Int(model.openAngle))° is a normal laptop pose. Drag toward \(Int(model.closedAngle))° to fold, or close the real lid.")
+                Text(String(format: String(localized: "%lld° is a normal laptop pose. Drag toward %lld° to fold, or close the real lid."), Int(model.openAngle), Int(model.closedAngle)))
                     .foregroundStyle(.secondary)
             } header: {
                 Text("Studio")

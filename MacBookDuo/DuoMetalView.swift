@@ -21,7 +21,6 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
         enableSetNeedsDisplay = false
         preferredFramesPerSecond = 120
         autoResizeDrawable = true
-        clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         applyChrome()
         (layer as? CAMetalLayer)?.colorspace = CGColorSpace(name: CGColorSpace.displayP3)
         (layer as? CAMetalLayer)?.pixelFormat = .bgra8Unorm
@@ -33,8 +32,9 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
     }
 
     func applyChrome() {
-        layer?.isOpaque = !liveDesktop
-        (layer as? CAMetalLayer)?.isOpaque = !liveDesktop
+        layer?.isOpaque = true
+        (layer as? CAMetalLayer)?.isOpaque = true
+        clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         preferredFramesPerSecond = 120
     }
 
@@ -58,14 +58,38 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
         if foldMode.usesLiveCapture {
             let pointSize = bounds.size
             let scale = Double(drawableSize.width) / max(Double(pointSize.width), 1)
-            engine.preparePlus(from: source, commandBuffer: commandBuffer, drawableSize: drawableSize)
-            guard let plus = engine.plusTexture,
-                  let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+            if foldMode == .frost {
+                engine.prepareFrost(from: source, commandBuffer: commandBuffer)
+            } else {
+                engine.preparePlus(from: source, commandBuffer: commandBuffer, drawableSize: drawableSize)
+            }
+            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
                 commandBuffer.commit()
                 return
             }
-            var plusUniforms = foldMode == .frost
-                ? DuoPlusGeometry.frostUniforms(
+            if foldMode == .frost {
+                var frostUniforms = FrostUniforms(
+                    plane: SIMD4(
+                        Float((openAngle - Double(uniforms.angle)) * .pi / 180),
+                        Float(drawableSize.width / max(drawableSize.height, 1)),
+                        1,
+                        2
+                    )
+                )
+                encoder.setRenderPipelineState(engine.frostPipeline)
+                encoder.setFragmentBytes(&frostUniforms, length: MemoryLayout<FrostUniforms>.stride, index: 0)
+                encoder.setFragmentTexture(source, index: 0)
+                for index in 0..<4 {
+                    encoder.setFragmentTexture(engine.frostLevel(index) ?? source, index: index + 1)
+                }
+                encoder.setFragmentSamplerState(engine.sampler, index: 0)
+            } else {
+                guard let plus = engine.plusTexture else {
+                    encoder.endEncoding()
+                    commandBuffer.commit()
+                    return
+                }
+                var plusUniforms = DuoPlusGeometry.plusUniforms(
                     startAngle: openAngle,
                     currentAngle: Double(uniforms.angle),
                     progress: Double(uniforms.progress),
@@ -73,18 +97,11 @@ final class DuoMetalView: MTKView, MTKViewDelegate {
                     screenSize: pointSize,
                     pixelScale: scale
                 )
-                : DuoPlusGeometry.plusUniforms(
-                    startAngle: openAngle,
-                    currentAngle: Double(uniforms.angle),
-                    progress: Double(uniforms.progress),
-                    look: plusLook,
-                    screenSize: pointSize,
-                    pixelScale: scale
-                )
-            encoder.setRenderPipelineState(foldMode == .frost ? engine.frostPipeline : engine.plusPipeline)
-            encoder.setFragmentBytes(&plusUniforms, length: MemoryLayout<PlusUniforms>.stride, index: 0)
-            encoder.setFragmentTexture(plus, index: 0)
-            encoder.setFragmentSamplerState(engine.mipSampler, index: 0)
+                encoder.setRenderPipelineState(engine.plusPipeline)
+                encoder.setFragmentBytes(&plusUniforms, length: MemoryLayout<PlusUniforms>.stride, index: 0)
+                encoder.setFragmentTexture(plus, index: 0)
+                encoder.setFragmentSamplerState(engine.mipSampler, index: 0)
+            }
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             encoder.endEncoding()
         } else {

@@ -22,9 +22,13 @@ final class DuoEngine {
     private var kawaseA: MTLTexture?
     private var kawaseB: MTLTexture?
     private(set) var plusTexture: MTLTexture?
+    private var frostLevels: [MTLTexture] = []
+    private var frostFilters: [MPSImageGaussianBlur] = []
     private lazy var plusScaler = MPSImageBilinearScale(device: device)
     private(set) var sourceGeneration: UInt64 = 0
     private var plusGeneration: UInt64 = .max
+    private var frostGeneration: UInt64 = .max
+    private static let frostSigmas: [Float] = [2, 6, 16, 40]
 
     var displayTexture: MTLTexture? { sourceTexture }
 
@@ -116,6 +120,7 @@ final class DuoEngine {
         sourceTexture = nil
         blurTexture = nil
         plusTexture = nil
+        frostGeneration = .max
         hasSource = false
         plusGeneration = .max
     }
@@ -164,6 +169,40 @@ final class DuoEngine {
             }
         }
         plusTexture = target
+    }
+
+    func prepareFrost(from source: MTLTexture, commandBuffer: MTLCommandBuffer) {
+        let width = source.width
+        let height = source.height
+        if frostLevels.first?.width != width || frostLevels.first?.height != height {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .rgba16Float,
+                width: width,
+                height: height,
+                mipmapped: false
+            )
+            descriptor.usage = [.shaderRead, .shaderWrite]
+            descriptor.storageMode = .private
+            frostLevels = (0..<Self.frostSigmas.count).compactMap { _ in
+                device.makeTexture(descriptor: descriptor)
+            }
+            let scale = Float(max(height, 1)) / 1000
+            frostFilters = Self.frostSigmas.map { sigma in
+                let filter = MPSImageGaussianBlur(device: device, sigma: max(sigma * scale, 0.8))
+                filter.edgeMode = .clamp
+                return filter
+            }
+            frostGeneration = .max
+        }
+        guard sourceGeneration != frostGeneration else { return }
+        frostGeneration = sourceGeneration
+        for (filter, destination) in zip(frostFilters, frostLevels) {
+            filter.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        }
+    }
+
+    func frostLevel(_ index: Int) -> MTLTexture? {
+        frostLevels.indices.contains(index) ? frostLevels[index] : nil
     }
 
     private func rebuildBlur(from source: MTLTexture) {
@@ -240,11 +279,25 @@ final class DuoEngine {
         commands.waitUntilCompleted()
     }
 
-    private static func makePipeline(device: MTLDevice, vertex: MTLFunction, fragment: MTLFunction) -> MTLRenderPipelineState {
+    private static func makePipeline(
+        device: MTLDevice,
+        vertex: MTLFunction,
+        fragment: MTLFunction,
+        blended: Bool = false
+    ) -> MTLRenderPipelineState {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertex
         descriptor.fragmentFunction = fragment
         descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        if blended, let color = descriptor.colorAttachments[0] {
+            color.isBlendingEnabled = true
+            color.rgbBlendOperation = .add
+            color.alphaBlendOperation = .add
+            color.sourceRGBBlendFactor = .one
+            color.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            color.sourceAlphaBlendFactor = .one
+            color.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        }
         do {
             return try device.makeRenderPipelineState(descriptor: descriptor)
         } catch {

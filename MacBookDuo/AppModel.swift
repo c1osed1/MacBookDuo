@@ -79,7 +79,7 @@ final class AppModel {
     private var started = false
     private var smoothedAngle = 110.0
     private var smoothedProgress = 0.0
-    private var hingeVelocity = 0.0
+    private var motion = LidMotionFilter()
     private var cannedProgress: Double?
     private var cannedStart: TimeInterval = 0
     private var lastTime = CACurrentMediaTime()
@@ -148,10 +148,10 @@ final class AppModel {
         let initial = sensor.isAvailable ? sensor.angle : 110
         demoAngle = initial
         smoothedAngle = initial
-        hingeVelocity = 0
+        lastTime = CACurrentMediaTime()
+        motion.reset(to: initial)
         peakAngle = initial
         sawOpenPose = initial >= openAngle - 1
-        lastTime = CACurrentMediaTime()
 
         tickProxy.onTick = { [weak self] dt in
             MainActor.assumeIsolated {
@@ -226,27 +226,14 @@ final class AppModel {
             } else {
                 smoothedProgress = Self.cannedCurve(elapsed)
                 smoothedAngle = mappedAngle(for: smoothedProgress)
-                hingeVelocity = 0
             }
         } else {
-            let targetAngle: Double
-            if driveDisplayFromDemo || !sensor.isAvailable {
-                targetAngle = demoAngle
-            } else {
-                targetAngle = sensor.predictedAngle(at: now)
-            }
-            let hidSpeed = abs(sensor.coastVelocity(at: now))
-            // Slow closes need a longer window so 1° HID steps become a curve.
-            // Fast slams shorten it so the pane still keeps up with the lid.
-            let smoothTime = 0.1 - min(hidSpeed, 80) / 80 * 0.062
-            smoothedAngle = Self.smoothDamp(
-                current: smoothedAngle,
-                target: targetAngle,
-                velocity: &hingeVelocity,
-                smoothTime: smoothTime,
-                dt: dt
-            )
+            let sample = driveDisplayFromDemo || !sensor.isAvailable ? demoAngle : sensor.angle
+            let previewing = cannedProgress != nil || driveDisplayFromDemo
+            let stable = motion.update(sample, tolerance: previewing ? 0 : 2)
+            smoothedAngle += (stable - smoothedAngle) * (1 - exp(-dt / 0.08))
             smoothedProgress = Self.progress(for: smoothedAngle, open: openAngle, closed: closedAngle)
+            trackLidMotion(stable, now: now)
         }
 
         var uniforms = DuoUniforms.identity
@@ -259,8 +246,6 @@ final class AppModel {
         overlay.plusLook = plusLook
         overlay.uniforms = uniforms
 
-        let motionAngle = sensor.isAvailable ? sensor.angle : smoothedAngle
-        trackLidMotion(motionAngle, now: now)
         peakAngle = max(peakAngle, smoothedAngle)
         if smoothedAngle >= openAngle - 1 {
             sawOpenPose = true
@@ -380,7 +365,7 @@ final class AppModel {
             sensor.poll()
             let real = sensor.angle
             smoothedAngle = real
-            hingeVelocity = 0
+            motion.reset(to: real)
             demoAngle = real
             lastAngleSample = real
             lastAngleSampleTime = now
@@ -491,29 +476,30 @@ final class AppModel {
     }
 
     private func trackLidMotion(_ angle: Double, now: TimeInterval) {
-        if lastAngleSampleTime > 0, now > lastAngleSampleTime {
+        if lastAngleSampleTime > 0, now > lastAngleSampleTime, angle != lastAngleSample {
             let dt = now - lastAngleSampleTime
-            if dt > 0.001, angle != lastAngleSample {
+            if dt > 0.001 {
                 let instant = (angle - lastAngleSample) / dt
                 angularVelocity = 0.5 * instant + 0.5 * angularVelocity
             }
-        }
-        if angle != lastAngleSample {
-            if angle < lastAngleSample - 0.15 || angularVelocity <= -1.5 {
+            if angle < lastAngleSample - 1.8 {
                 lastClosingTime = now
             }
             lastAngleSample = angle
             lastAngleSampleTime = now
-        } else if now - lastAngleSampleTime > 0.4 {
+        } else if lastAngleSampleTime == 0 {
+            lastAngleSample = angle
+            lastAngleSampleTime = now
+        } else if now - lastAngleSampleTime > 1.2 {
             angularVelocity = 0
         }
     }
 
     private func wantsPrewarm(now: TimeInterval) -> Bool {
         guard enabled, cannedProgress == nil, !overlay.isVisible else { return false }
-        let closing = angularVelocity <= -1.5 || now - lastClosingTime < 0.35
+        let closing = angularVelocity <= -4 || now - lastClosingTime < 1.2
         return closing
-            && smoothedAngle <= openAngle + 40
+            && smoothedAngle <= openAngle + 16
             && smoothedAngle >= closedAngle
     }
 
@@ -614,7 +600,7 @@ final class AppModel {
             return smoothedProgress > 0.012
         }
         guard sawOpenPose, smoothedProgress > 0.012, !openingPastStart else { return false }
-        return angularVelocity <= -1 || now - lastClosingTime < 0.8
+        return angularVelocity <= -1 || now - lastClosingTime < 2.4
     }
 
     private func handleModeChange() {
@@ -660,24 +646,6 @@ final class AppModel {
     private static func smoothstep(_ t: Double) -> Double {
         let x = min(max(t, 0), 1)
         return x * x * (3 - 2 * x)
-    }
-
-    /// Critically damped follow, same family as Preview's per-frame curve.
-    private static func smoothDamp(
-        current: Double,
-        target: Double,
-        velocity: inout Double,
-        smoothTime: Double,
-        dt: Double
-    ) -> Double {
-        let smoothTime = max(0.0008, smoothTime)
-        let omega = 2 / smoothTime
-        let x = omega * dt
-        let exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
-        let change = current - target
-        let temp = (velocity + omega * change) * dt
-        velocity = (velocity - omega * temp) * exp
-        return target + (change + temp) * exp
     }
 
 }

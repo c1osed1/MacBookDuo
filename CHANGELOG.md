@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.5.0 — 2026-09-12
+
+Look is a gallery: one Mac on top, Glass / Duo+ / Frost as cards that play the full fold. Frost stretches the live plane up and milks the far edge. The hinge ignores idle jitter so Screen Recording does not blink while the lid is still.
+
+The app and menu bar follow the system language (English or Russian).
+
 ## 1.4.0 — 2026-09-11
 
 Frost pins the live desktop in the room and milks the far edge as the lid closes. Glass still freezes; Duo+ still leans as a hinged sheet.

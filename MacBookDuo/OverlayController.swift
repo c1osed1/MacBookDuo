@@ -123,8 +123,9 @@ final class OverlayController {
     }
 
     private func applyOverlayChrome(_ overlay: OverlayPanel, live: Bool) {
-        overlay.isOpaque = !live
-        overlay.backgroundColor = live ? .clear : .black
+        let clearChrome = live && foldMode != .frost
+        overlay.isOpaque = !clearChrome
+        overlay.backgroundColor = clearChrome ? .clear : .black
         overlay.hasShadow = false
         overlay.ignoresMouseEvents = true
         overlay.hidesOnDeactivate = false

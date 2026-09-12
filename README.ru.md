@@ -49,9 +49,7 @@
 Выбор в разделе **Вид**. Оверлей только на встроенном Liquid Retina.
 
 <p align="center">
-  <video src="docs/look-ui.mp4" width="680" autoplay loop muted playsinline>
-    <a href="docs/look-ui.mp4">Настройки вида Linger</a>
-  </video>
+  <img width="680" alt="Настройки вида Linger" src="docs/look.gif" />
 </p>
 
 ## Как пользоваться

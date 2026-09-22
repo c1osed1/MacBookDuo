@@ -2,14 +2,18 @@ import CoreMedia
 import CoreVideo
 import Foundation
 import Metal
+import QuartzCore
 import ScreenCaptureKit
+import os
 
 @MainActor
 final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     private let engine: DuoEngine
+    private let log = Logger(subsystem: "com.foldglass.macbookduo", category: "capture")
     private var stream: SCStream?
     private var running = false
     private var startingCount = 0
+    private var startRequestedAt: TimeInterval = 0
     private var stoppingIntentionally = false
     private var opChain: Task<Void, Never> = Task {}
     nonisolated(unsafe) private var textureCache: CVMetalTextureCache?
@@ -39,6 +43,10 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     var isRunning: Bool { running }
     var isStarting: Bool { startingCount > 0 }
 
+    /// True when a start has been in flight long enough that the serialized
+    /// operation chain is almost certainly wedged (e.g. a hung `stopCapture`).
+    var isStalled: Bool { startingCount > 0 && CACurrentMediaTime() - startRequestedAt > 12 }
+
     init(engine: DuoEngine) {
         self.engine = engine
         super.init()
@@ -48,6 +56,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     func start(live: Bool = false) async {
+        if startingCount == 0 { startRequestedAt = CACurrentMediaTime() }
         startingCount += 1
         defer { startingCount -= 1 }
         await runSerialized {
@@ -59,6 +68,25 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
         await runSerialized {
             await self.stopStream()
         }
+    }
+
+    /// Drops a wedged operation chain so future start/stop calls are not blocked
+    /// forever by a hung ScreenCaptureKit call. The abandoned task may still be
+    /// parked, but nothing waits on it any more.
+    func abort() {
+        log.warning("aborting wedged capture stream")
+        running = false
+        startingCount = 0
+        stoppingIntentionally = false
+        stream = nil
+        liveFrameRing.removeAll()
+        retainedCVTexture = nil
+        lock.withLock {
+            pendingCV = nil
+            pendingTexture = nil
+            hopScheduled = false
+        }
+        opChain = Task {}
     }
 
     private func runSerialized(_ work: @escaping @MainActor () async -> Void) async {
@@ -85,6 +113,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
                 try? await Task.sleep(for: .milliseconds(delay))
             }
         }
+        log.error("capture failed after all retries")
         engine.markCaptureFailed()
     }
 
@@ -215,6 +244,7 @@ final class CaptureStream: NSObject, SCStreamOutput, SCStreamDelegate {
     nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
         Task { @MainActor in
             if self.stoppingIntentionally { return }
+            self.log.error("capture stream stopped unexpectedly: \(error.localizedDescription, privacy: .public)")
             self.running = false
             self.engine.markCaptureFailed()
         }

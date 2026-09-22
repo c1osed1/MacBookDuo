@@ -11,5 +11,7 @@
 	</array>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Linger uses the built-in display to animate the lid fold. Capture stays on this Mac and stops when you quit.</string>
+	<key>NSAppSleepDisabled</key>
+	<true/>
 </dict>
 </plist>

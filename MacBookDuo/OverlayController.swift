@@ -102,7 +102,8 @@ final class OverlayController {
     /// ScreenCaptureKit only lists apps that own a window, so exclusion of
     /// the overlay from the capture stream needs this placeholder.
     func keepPresence() {
-        guard presenceWindow == nil else { return }
+        if let presenceWindow, presenceWindow.isVisible { return }
+        presenceWindow?.orderOut(nil)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
             styleMask: .borderless,

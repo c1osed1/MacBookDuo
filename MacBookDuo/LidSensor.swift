@@ -16,6 +16,7 @@ final class LidSensor {
     private var lastAngle = 0.0
     private var lastTime: TimeInterval = 0
     private var firstSample = true
+    private var consecutiveFailures = 0
 
     nonisolated private static let options = IOOptionBits(kIOHIDOptionsTypeNone)
 
@@ -54,10 +55,17 @@ final class LidSensor {
             guard let base = buffer.baseAddress else { return kIOReturnNoMemory }
             return IOHIDDeviceGetReport(device, kIOHIDReportTypeFeature, 1, base, &length)
         }
-        guard result == kIOReturnSuccess, length >= 3 else { return }
+        guard result == kIOReturnSuccess, length >= 3 else {
+            registerFailure()
+            return
+        }
 
         let raw = Double(UInt16(report[2]) << 8 | UInt16(report[1]))
-        guard raw >= 0, raw <= 180 else { return }
+        guard raw >= 0, raw <= 180 else {
+            registerFailure()
+            return
+        }
+        consecutiveFailures = 0
 
         let now = CACurrentMediaTime()
 
@@ -87,6 +95,36 @@ final class LidSensor {
 
         angle = raw
         status = Self.label(for: raw)
+    }
+
+    /// Re-discovers and re-opens the HID device. The handle can go stale after
+    /// the machine wakes, after which every report fails silently.
+    func restart() {
+        if deviceOpen, let device {
+            IOHIDDeviceClose(device, Self.options)
+            deviceOpen = false
+        }
+        firstSample = true
+        lastAngle = 0
+        lastTime = 0
+        velocity = 0
+        consecutiveFailures = 0
+        if let found = Self.findDevice() {
+            device = found
+            isAvailable = true
+            status = String(localized: "Sensor ready")
+            start()
+        } else {
+            device = nil
+            isAvailable = false
+            status = String(localized: "Lid sensor not found")
+        }
+    }
+
+    private func registerFailure() {
+        consecutiveFailures += 1
+        guard consecutiveFailures >= 40 else { return }
+        restart()
     }
 
     private static func label(for angle: Double) -> String {

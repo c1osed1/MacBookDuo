@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.5.2 — 2026-09-22
+
+The lid fold no longer goes to sleep on its own. Linger now recovers when the display link stalls, when the hinge sensor handle goes stale after wake, or when ScreenCaptureKit wedges, and it stays awake as a menu bar extra instead of napping.
+
 ## 1.5.1 — 2026-09-12
 
 Frost keeps the far edge milky instead of punching a black hole. Blur is a continuous Gaussian, with a little hinge chroma. Opening the lid after a full close plays the fold in reverse.

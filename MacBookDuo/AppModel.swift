@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import QuartzCore
+import os
 
 @MainActor
 @Observable
@@ -105,6 +106,10 @@ final class AppModel {
     private var demoTask: Task<Void, Never>?
     private var screenObservers: [NSObjectProtocol] = []
     private var workspaceObservers: [NSObjectProtocol] = []
+    private var lastTickTime: TimeInterval = 0
+    private var watchdog: Timer?
+    private var activityToken: NSObjectProtocol?
+    private let log = Logger(subsystem: "com.foldglass.macbookduo", category: "lifecycle")
 
     var angle: Double {
         if cannedProgress != nil { return mappedAngle(for: smoothedProgress) }
@@ -159,7 +164,13 @@ final class AppModel {
                 self?.tick(frameDt: dt)
             }
         }
+        activityToken = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep],
+            reason: "Keep the lid fold responsive in the menu bar"
+        )
+        lastTickTime = CACurrentMediaTime()
         installDisplayLink()
+        installWatchdog()
         observeEnvironment()
     }
 
@@ -169,6 +180,12 @@ final class AppModel {
         capture.frozen = false
         displayLink?.invalidate()
         displayLink = nil
+        watchdog?.invalidate()
+        watchdog = nil
+        if let activityToken {
+            ProcessInfo.processInfo.endActivity(activityToken)
+            self.activityToken = nil
+        }
         screenObservers.forEach { NotificationCenter.default.removeObserver($0) }
         screenObservers.removeAll()
         workspaceObservers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
@@ -211,6 +228,7 @@ final class AppModel {
 
     func tick(frameDt: TimeInterval) {
         let now = CACurrentMediaTime()
+        lastTickTime = now
         let active = needsActiveTick
         if !active, now - lastIdlePoll < 0.09 {
             return
@@ -557,6 +575,40 @@ final class AppModel {
         displayLink = link
     }
 
+    private func installWatchdog() {
+        watchdog?.invalidate()
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.watchdogFire()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        watchdog = timer
+    }
+
+    /// Independent of the display link, so it can revive the app after the
+    /// link dies, the sensor handle goes stale, or capture wedges.
+    private func watchdogFire() {
+        let now = CACurrentMediaTime()
+        if now - lastTickTime > 1.5 {
+            log.warning("tick loop stalled; reinstalling display link")
+            installDisplayLink()
+            lastTickTime = now
+            overlay.keepPresence()
+            if sensor.isAvailable { sensor.poll() }
+        }
+        if capture.isStalled {
+            capture.abort()
+            let wantsCapture = cannedProgress != nil
+                || closedSession
+                || foldSessionActive
+                || overlay.isVisible
+            if enabled, wantsCapture {
+                ensureCaptureStarted()
+            }
+        }
+    }
+
     private func observeEnvironment() {
         let center = NotificationCenter.default
         let screens = center.addObserver(
@@ -613,9 +665,8 @@ final class AppModel {
         angularVelocity = 0
         lastAngleSampleTime = 0
         keepHotUntil = CACurrentMediaTime() + 2.5
-        if sensor.isAvailable {
-            sensor.poll()
-        }
+        installDisplayLink()
+        sensor.restart()
         let angle = sensor.isAvailable ? sensor.angle : smoothedAngle
         smoothedAngle = angle
         motion.reset(to: angle)
